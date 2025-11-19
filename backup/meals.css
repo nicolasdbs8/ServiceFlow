@@ -1,0 +1,239 @@
+/* Meal modal layout */
+.meal-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.meal-header .title {
+  flex: 0 0 auto;
+}
+
+.passenger-carousel {
+  position: relative;
+  width: 100%;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.seat-wheel {
+  position: relative;
+  width: 100%;
+  height: 52px;
+  touch-action: pan-y;
+}
+
+.seat-wheel__mask {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.seat-wheel__track {
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  align-items: stretch;
+  padding: 0 20px;
+  will-change: transform;
+}
+
+.seat-wheel__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 44px;
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--hairline);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 0.68rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.seat-wheel__item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.seat-wheel__item .status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--hairline);
+}
+
+.seat-wheel__label {
+  font-weight: 600;
+  text-align: center;
+}
+
+.seat-wheel__item.is-empty {
+  opacity: 0.6;
+}
+
+.seat-wheel__item.is-served .status-dot {
+  background: var(--ok);
+}
+
+.seat-wheel__item.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.seat-wheel__focus {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 50%;
+  margin-left: -22px;
+  width: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  pointer-events: none;
+  opacity: 0.25;
+  z-index: 0;
+}
+
+.status-dot.ftl {
+  background: var(--ftl);
+}
+
+.status-dot.sen {
+  background: #c7a600;
+}
+
+.status-dot.hon {
+  background: var(--hon);
+}
+
+.status-dot.vip {
+  background: var(--vip);
+}
+
+.status-dot.fcl {
+  background: #3a2e00;
+}
+
+.status-dot.pad {
+  background: var(--pad);
+}
+
+.meal-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.meal-card-grid--compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.meal-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--hairline);
+  background: var(--panel-2);
+  color: var(--text);
+  min-height: 60px;
+  text-align: left;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.meal-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.meal-card__name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.meal-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.meal-card__meta .badge {
+  background: rgba(0, 0, 0, 0.15);
+  color: var(--accent-contrast);
+}
+
+.theme-dark .meal-card__meta .badge {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.meal-card.is-selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.meal-card.is-selected .meal-card__meta {
+  color: var(--text);
+}
+
+.theme-dark .meal-card.is-selected {
+  background: rgba(57, 120, 161, 0.24);
+}
+
+.meal-card[aria-disabled="true"] {
+  opacity: 0.45;
+}
+
+.meal-card[aria-disabled="true"]:not(.is-selected) {
+  pointer-events: none;
+}
+
+.meal-action-row {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.meal-action {
+  flex: 1 1 30%;
+  min-height: 56px;
+  font-size: 1rem;
+  text-transform: none;
+}
+
+.meal-action.is-hot {
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+
+.meal-action.is-hot[data-variant="ghost"] {
+  box-shadow: 0 0 0 2px var(--hairline) inset;
+}
+
+@media (max-width: 1024px) {
+  .passenger-carousel {
+    grid-template-columns: repeat(3, minmax(64px, 1fr));
+  }
+
+  .passenger-pill {
+    padding: 6px 8px;
+  }
+
+  .meal-card {
+    min-height: 58px;
+    padding: 8px 6px;
+  }
+}

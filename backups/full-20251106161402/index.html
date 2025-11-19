@@ -1,0 +1,741 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+<link rel="apple-touch-icon" href="/icons/icon-180.png?v=2">
+<link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.png?v=2">
+<link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png?v=2">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-orientations" content="landscape">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<meta name="theme-color" content="#383838">
+<link rel="stylesheet" href="/src/styles/globals.css">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ServiceFlow">
+
+<title>SWISS ServiceFlow  Seatmap & Service  v.1.0</title>
+
+
+</head>
+<body class="theme-dark">
+<header>
+  <div class="wrap row">
+    <div class="row" style="gap:6px">
+<button class="btn primary" id="clientView"> Mode client</button>
+<label class="pill" id="lblFlight">Flight</label>
+      <input id="flightNo" type="text" placeholder="(ex: LX2810)" style="width:160px">
+<label class="pill" id="lblDate">Date</label>
+<input id="flightDate" type="text" inputmode="none" autocomplete="off" style="width:170px" placeholder="">
+      <input type="hidden" id="flightDateISO">      
+<button class="btn ghost" id="saveSnapshot"></button>
+<button class="btn ghost" id="importJSON"></button>
+<input
+  type="file"
+  id="importFile"
+  accept=".json,application/json"
+  style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0"
+/>
+<button class="btn ghost" id="exportPNG"> PNG</button>
+
+<button class="btn danger" id="resetFlight">Rinitialiser fin de vol</button>
+
+<!-- Lang buttons (EN/DE/FR) -->
+<div class="row" id="langButtons" style="gap:6px; margin-left:auto">
+  <div class="lang-dropdown" id="langDropdown">
+    <button class="btn" id="langActive" aria-haspopup="listbox" aria-expanded="false"> </button>
+    <div class="lang-menu" id="langMenu" role="listbox">
+      <button class="btn" role="option" data-lang="EN"></button>
+      <button class="btn" role="option" data-lang="DE"></button>
+      <button class="btn" role="option" data-lang="FR"></button>
+    </div>
+  </div>
+  <button class="btn" id="themeToggle"></button>
+</div>
+
+    </div>
+  </div>
+</header>
+
+<div class="grid">
+  <aside>
+<h3 id="hdrConfig">Curtain & configuration</h3>
+<div class="row" style="margin-bottom:8px">
+<label class="pill" id="lblLayout">Aircraft</label>
+    <div class="layout-buttons" id="layoutButtons" role="group" aria-labelledby="lblLayout">
+      <button type="button" class="btn layout-btn" data-layout="A220">A22X</button>
+      <button type="button" class="btn layout-btn" data-layout="A320">A32X</button>
+    </div>
+    <input type="hidden" id="layoutSelect" value="A220">
+  </div>
+<div class="row" style="margin-bottom:8px">
+<label class="pill" id="lblRows">Rows</label>
+<div class="row" style="gap:4px">
+  <button class="btn inv-minus" id="rowsBizMinus" aria-label="Decrease rows"></button>
+  <div class="badge" id="rowsBizDisplay">4</div>
+  <button class="btn inv-plus" id="rowsBizPlus" aria-label="Increase rows"></button>
+</div>
+    </div>
+    <div class="section">
+<div class="title" id="secMenuTitle">Meal labels</div>
+<label class="pill" id="lblViande" style="display:inline-block;margin-bottom:8px">Option 1</label>
+<input id="labelViande" type="text" placeholder="ex: Beef with red wine sauce">
+<label class="pill" id="lblVege" style="margin-top:6px;display:inline-block;margin-bottom:8px">Option 2</label>
+<input id="labelVege" type="text" placeholder="ex: Vegetarian lasagna">
+    </div>
+<h3 id="hdrInventaire">Inventory</h3>
+    <div class="inventory" id="inv">
+<div id="lblInvPlateaux">Trays</div>
+      <div class="row inventory-row">
+        <button class="btn inv-minus" data-inv="-1" data-key="plateaux" aria-label="Decrease trays"></button>
+        <div class="badge" data-badge="plateaux">0</div>
+        <button class="btn inv-plus" data-inv="+1" data-key="plateaux" aria-label="Increase trays"></button>
+      </div>
+
+<div id="lblInvViande">Option 1</div>
+      <div class="row inventory-row">
+        <button class="btn inv-minus" data-inv="-1" data-key="hot_viande" aria-label="Decrease option 1"></button>
+        <div class="badge" data-badge="hot_viande">0</div>
+        <button class="btn inv-plus" data-inv="+1" data-key="hot_viande" aria-label="Increase option 1"></button>
+      </div>
+
+<div id="lblInvVege">Option 2</div>
+      <div class="row inventory-row">
+        <button class="btn inv-minus" data-inv="-1" data-key="hot_vege" aria-label="Decrease option 2"></button>
+        <div class="badge" data-badge="hot_vege">0</div>
+        <button class="btn inv-plus" data-inv="+1" data-key="hot_vege" aria-label="Increase option 2"></button>
+      </div>
+
+<div id="lblInvSpecial">Special</div>
+      <div class="row inventory-total">
+        <div class="badge" data-badge="hot_special" title="Somme des SPML">0</div>
+      </div>
+
+      <div class="inventory-list" id="spmlInv" style="grid-column:1 / -1"></div>
+
+<div id="preHeader">Pre-order</div>
+      <div class="row inventory-total">
+        <div class="badge" data-badge="hot_pre" title="Pre-order sum">0</div>
+      </div>
+
+      <div class="inventory-list" id="preInv" style="grid-column:1 / -1"></div>
+
+<div style="grid-column:1 / -1; margin-top:6px; display:inline-grid; grid-template-columns:1fr; gap:8px; width:auto">
+<!-- L1 : titre SPML seul -->
+<div class="row" style="grid-column:1 / -1; margin-top:6px">
+  <label class="pill" id="lblSpml" style="display:inline-block">SPML</label>
+</div>
+
+<!-- L2 : liste droulante seule -->
+<div class="row" style="grid-column:1 / -1">
+  <select id="spmlAddCode" title="Ajouter code SPML" style="width:auto">
+    <option value="">Ajouter</option>
+  </select>
+</div>
+
+<!-- L3 : quantit + bouton  droite -->
+<div class="row" style="grid-column:1 / -1">
+  <input id="spmlAddQty" type="number" min="1" value="1" style="width:90px">
+  <button class="btn" id="spmlAddBtn" data-i18n-btn="add">Add</button>
+</div>
+
+      <div class="row" style="grid-column:1 / -1; margin-top:6px">
+<label class="pill" id="lblPreAdd">Pre-order</label>
+        <input id="preAddLabel" type="text" placeholder="ex: Glutenfree pasta" style="width:180px">
+        <input id="preAddQty" type="number" min="1" value="1" style="width:90px">
+<button class="btn" id="preAddBtn" data-i18n-btn="add">Add</button>
+      </div>
+    </div>
+  </aside>
+
+<main>
+  <div class="seatmap"> <!-- AJOUT -->
+<div class="seatmap-tabs">
+  <div id="phaseChips" class="tab-bar" role="tablist" aria-label="Modes de service">
+    <button
+      type="button"
+      class="tab active"
+      data-phase="fiche"
+      id="chips_fiche"
+      aria-selected="true"
+      role="tab"
+    >
+      Fiche
+    </button>
+    <button
+      type="button"
+      class="tab"
+      data-phase="aperitif"
+      id="chips_apero"
+      aria-selected="false"
+      role="tab"
+    >
+      Apritif
+    </button>
+    <button
+      type="button"
+      class="tab"
+      data-phase="repas"
+      id="chips_meal"
+      aria-selected="false"
+      role="tab"
+    >
+      Plat
+    </button>
+    <button
+      type="button"
+      class="tab"
+      data-phase="tc"
+      id="chips_tc"
+      aria-selected="false"
+      role="tab"
+    >
+      Th & Caf
+    </button>
+  </div>
+  <div class="filter-bar">
+    <div id="filterTabs" class="subtab-bar" role="tablist" aria-label="Filtres de sige">
+    <button
+      type="button"
+      class="subtab active"
+      data-filter="all"
+      id="filter_all"
+      aria-selected="true"
+      role="tab"
+    >
+      Tous les siges
+    </button>
+    <button
+      type="button"
+      class="subtab"
+      data-filter="toServe"
+      id="filter_toserve"
+      aria-selected="false"
+      role="tab"
+    >
+       servir
+    </button>
+    <button
+      type="button"
+      class="subtab"
+      data-filter="later"
+      id="filter_later"
+      aria-selected="false"
+      role="tab"
+    >
+      Servir plus tard
+    </button>
+    <button
+      type="button"
+      class="subtab"
+      data-filter="clear"
+      id="filter_clear"
+      aria-selected="false"
+      role="tab"
+    >
+       dbarrasser
+    </button>
+    </div>
+  </div>
+</div>
+<div class="title" id="seatmapTitle"></div>
+<div id="legendPopover" class="legend-popover" role="dialog" aria-hidden="true" data-open="false">
+  <div class="legend legend-grid">
+    <div class="legend-column">
+      <div class="item"><div class="square ftl"></div>FTL</div>
+      <div class="item"><div class="square sen"></div>SEN</div>
+      <div class="item"><div class="square hon"></div>HON</div>
+      <div class="item"><div class="square vip"></div>VIP</div>
+      <div class="item"><div class="square fcl"></div>FCL</div>
+      <div class="item"><div class="square pad"></div>PAD</div>
+    </div>
+    <span class="legend-divider" aria-hidden="true"></span>
+    <div class="legend-column">
+      <div class="item"><span id="lgInfant"> Infant</span></div>
+      <div class="item"><span id="lgChild"> Child</span></div>
+      <div class="item"><span id="lgSleep"> Sleeping</span></div>
+    </div>
+  </div>
+</div>
+    <div id="seatgrid" class="seatgrid"></div>
+    <div class="legend-actions">
+      <button
+        type="button"
+        class="btn ghost legend-btn"
+        id="legendToggle"
+        aria-haspopup="dialog"
+        aria-controls="legendPopover"
+        aria-expanded="false"
+        title="Show legend"
+        aria-label="Show legend"
+      >
+        Show legend
+      </button>
+    </div>
+  </div> <!-- ce </div> existait dj juste aprs #seatgrid : il devient la FERMETURE de .seatmap -->
+<div class="section" id="historySection">
+<div class="title" id="secHistoryTitle">History (newest on top)</div>
+<!-- TRI simple -->
+<div class="row" id="histSortBar" style="gap:8px;margin:6px 0">
+<button class="btn ghost" id="histOrderBtn" title="Inverser l'ordre"></button>
+
+</div>
+<div id="histControls" class="row" style="gap:8px;margin:6px 0 8px 0;align-items:center">
+  <label class="pill" id="histLbl">Affichage</label>
+
+  <select id="histMode" title="Filtrer l'historique">
+    <option value="all">Tous les vnements</option>
+    <option value="seat">Par sige</option>
+    <option value="type">Par type</option>
+  </select>
+
+ <span id="histSeatWrap" class="row" style="gap:6px;display:none">
+  <label class="pill" id="histLblSeat">Sige</label>
+  <select id="histSeat" style="width:90px">
+    <option value=""></option>
+  </select>
+</span>
+
+  <span id="histTypeWrap" class="row" style="gap:6px;display:none">
+    <label class="pill" id="histLblType">Type</label>
+    <select id="histType">
+      <option value="apServed">Apritif servi</option>
+      <option value="mealDrinkServed">Meal drink</option>
+      <option value="tcServed">Th & Caf servi</option>
+      <option value="mealServed">Plat servi</option>
+      <option value="apCanceled">Apritif annul</option>
+      <option value="serviceCanceled">Service annul</option>
+      <option value="trayCleared">Plateau debarasse/option>
+      <option value="trayUncleared">Annuler dbarrassage</option>
+      <option value="reset">Rinitialisation vol</option>
+      <option value="seatMoveStart">Move pax (dbut)</option>
+      <option value="seatSwapped">Seats swapped</option>
+      <option value="text">Notes</option>
+    </select>
+  </span>
+
+</div>
+  <div id="history" style="display:flex;flex-direction:column;gap:6px"></div>
+</div>
+</main>
+
+<aside id="flowAside">
+  <h3 id="flowTitle">Order flow</h3>
+<div class="section">
+  <div class="title" id="remindersTitle">Upcoming reminders</div>
+      <div id="remindersList" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+
+  <div class="section">
+    <div class="title" id="flowLaterTitle">Plus tard</div>
+    <div id="flowLater" class="flow-list"></div>
+  </div>
+
+ <div class="section">
+    <div class="title" id="flowNowTitle"> servir maintenant</div>
+    <div id="flowNow" class="flow-list"></div>
+  </div>
+
+    <div class="section">
+    <div class="title" id="flowClearTitle"> dbarrasser</div>
+    <div id="flowClear" class="flow-list"></div>
+  </div>
+
+
+</aside>
+
+</div>
+
+<div class="modal-back" id="modalBack">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-shell">
+      <div class="modal-header">
+        <div class="modal-header__primary">
+          <h3 id="modalTitle" class="title">Seat</h3>
+          <div id="modalSeatMeta" class="modal-meta"></div>
+        </div>
+        <div class="modal-header__secondary">
+          <div class="modal-header__actions">
+            <button class="btn ghost icon" id="sleepModalBtn"></button>
+            <button class="btn" id="movePaxBtn" data-i18n="moveSeat"> Move</button>
+            <button class="btn ghost icon" id="closeModal"></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-layout">
+        <div class="modal-side-tabs" id="modalPhaseNav" role="tablist" aria-label="Service sections">
+          <button class="btn modal-side-tab active" id="navFicheBtn" data-phase="fiche" aria-selected="true" aria-pressed="true" type="button">
+            <span>Pax record</span>
+          </button>
+          <button class="btn modal-side-tab" id="navAperoBtn" data-phase="aperitif" aria-selected="false" aria-pressed="false" type="button">
+            <span>Aperitif</span>
+          </button>
+          <button class="btn modal-side-tab" id="navMealBtn" data-phase="repas" aria-selected="false" aria-pressed="false" type="button">
+            <span>Main</span>
+          </button>
+          <button class="btn modal-side-tab" id="navTCBtn" data-phase="tc" aria-selected="false" aria-pressed="false" type="button">
+            <span>Tea & Coffee</span>
+          </button>
+        </div>
+        <div class="modal-content">
+          <div class="two modal-body">
+            <div class="modal-column modal-column--profile">
+          <div class="modal-profile-grid">
+            <section class="modal-card" data-card="identity">
+              <div class="modal-card__header">
+                <div class="title" id="mdPass">Passenger</div>
+              </div>
+              <div class="modal-card__content">
+                <div class="form-row form-row--toggle">
+                  <div class="toggle-field">
+                    <label class="field-label" id="mdOcc" for="m_occ_chk">Seat occupied</label>
+                    <label class="switch">
+                      <input id="m_occ_chk" type="checkbox">
+                      <span class="switch-track"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="language-picker">
+                    <span class="field-label" id="mdLang">Language</span>
+                    <div class="language-buttons" role="group" aria-labelledby="mdLang">
+                      <button type="button" class="language-btn" data-lang="EN" aria-pressed="false" aria-label="English" title="English">
+                        <span class="flag" aria-hidden="true">🇬🇧</span>
+                      </button>
+                      <button type="button" class="language-btn" data-lang="DE" aria-pressed="false" aria-label="German" title="Deutsch">
+                        <span class="flag" aria-hidden="true">🇩🇪</span>
+                      </button>
+                      <button type="button" class="language-btn" data-lang="FR" aria-pressed="false" aria-label="French" title="Français">
+                        <span class="flag" aria-hidden="true">🇫🇷</span>
+                      </button>
+                      <button type="button" class="language-btn" data-lang="IT" aria-pressed="false" aria-label="Italian" title="Italiano">
+                        <span class="flag" aria-hidden="true">🇮🇹</span>
+                      </button>
+                    </div>
+                    <select id="m_lang" class="sr-only" aria-hidden="true">
+                      <option value=""></option>
+                      <option value="DE">DE</option>
+                      <option value="EN">EN</option>
+                      <option value="FR">FR</option>
+                      <option value="IT">IT</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-row form-row--segment" id="m_type_group">
+                  <span class="field-label" id="mdType">Type</span>
+                  <div class="segmented-control segmented-control--stack">
+                    <label class="segmented-control__option">
+                      <input type="radio" name="m_type" id="m_type_adult" value="normal">
+                      <span id="mdAdult"> Adult</span>
+                    </label>
+                    <div class="segmented-control__row">
+                      <label class="segmented-control__option">
+                        <input type="radio" name="m_type" id="m_type_child" value="child">
+                        <span id="mdChild"> Child</span>
+                      </label>
+                      <label class="segmented-control__option">
+                        <input type="radio" name="m_type" id="m_type_infant" value="infant">
+                        <span id="mdInfant"> Infant</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                                <div class="form-row">
+                  <div class="form-field">
+                    <label class="field-label" id="mdStatus" for="m_status">Status</label>
+                    <select id="m_status">
+                      <option value="none"></option>
+                      <option value="FTL">FTL</option>
+                      <option value="SEN">SEN</option>
+                      <option value="HON">HON</option>
+                      <option value="FCL">FCL</option>
+                      <option value="VIP">VIP</option>
+                      <option value="PAD">PAD</option>
+                      <option value="Other" id="optStatusOther">Other</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="modal-card" data-card="coordination">
+              <div class="modal-card__content">
+                <div class="form-row">
+                  <label class="field-label" id="mdEatWith" for="m_eatWith">Eat together with</label>
+                  <select id="m_eatWith">
+                    <option value=""></option>
+                  </select>
+                </div>
+
+                <div class="form-row form-row--later">
+                  <span class="field-label" id="mdLater">Serve later</span>
+                  <div class="later-buttons" role="group" aria-labelledby="mdLater">
+                    <button type="button" class="later-btn" data-value="5" aria-pressed="false">+5</button>
+                    <button type="button" class="later-btn" data-value="10" aria-pressed="false">+10</button>
+                    <button type="button" class="later-btn" data-value="20" aria-pressed="false">+20</button>
+                    <button type="button" class="later-btn" data-value="custom" aria-pressed="false">Custom</button>
+                  </div>
+                  <div class="later-custom" id="laterCustomContainer">
+                    <label class="field-label sr-only" for="m_later_time">Custom time</label>
+                    <input id="m_later_time" type="time">
+                  </div>
+                  <div class="form-field form-field--actions">
+                    <button id="m_later_apply" class="btn" disabled>
+                      <span id="mdLaterSet"> Set time</span>
+                    </button>
+                    <button id="m_later_cancel" class="btn" style="display:none">
+                      <span id="mdLaterCancel">Cancel</span>
+                    </button>
+                  </div>
+                  <select id="m_later" class="sr-only" aria-hidden="true">
+                    <option value=""></option>
+                    <option value="5">+5 min</option>
+                    <option value="10">+10 min</option>
+                    <option value="20">+20 min</option>
+                    <option value="custom" id="mdLaterCustom">Time</option>
+                  </select>
+                  <span id="m_later_view" class="pill pill-inline" style="display:none"></span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <section class="modal-card" data-card="notes">
+            <div class="modal-card__header">
+              <label class="title" id="mdNotes" for="m_notes">Notes</label>
+            </div>
+            <div class="modal-card__content">
+              <textarea id="m_notes" placeholder="ex: DE only, no nuts"></textarea>
+            </div>
+          </section>
+        </div>
+
+        <div class="modal-column modal-column--service" id="rightCol">
+          <div id="rightNotes" class="modal-card modal-card--floating"></div>
+
+          <section class="modal-card" id="mealBlock">
+            <div class="modal-card__header meal-header">
+              <div class="title" id="mdMeal">Meal</div>
+              <div
+                class="passenger-carousel"
+                id="passengerCarousel"
+                role="listbox"
+                aria-label="Nearby passengers"
+              ></div>
+            </div>
+            <div class="modal-card__content">
+              <div class="form-row form-row--stack">
+                <label class="field-label" id="mdNormal">Normal choice</label>
+                <div
+                  id="m_normalMeal"
+                  class="meal-card-grid"
+                  role="group"
+                  aria-labelledby="mdNormal"
+                ></div>
+                <input type="hidden" id="m_normalMealValue" value="" />
+              </div>
+              <div class="form-row form-row--stack" id="spmlRow" style="display:none">
+                <label class="field-label" id="mdSpml">SPML</label>
+                <div
+                  id="m_spml"
+                  class="meal-card-grid meal-card-grid--compact"
+                  role="group"
+                  aria-labelledby="mdSpml"
+                ></div>
+                <input type="hidden" id="m_spmlValue" value="" />
+              </div>
+
+              <div class="form-row form-row--stack">
+                <label class="field-label" id="mdPre" for="m_pre">Pre-order</label>
+                <select id="m_pre">
+                  <option value=""></option>
+                </select>
+              </div>
+
+              <div id="mealDrinkNotesBlock" class="form-row form-row--stack">
+                <label class="field-label" id="mdMealDrinkNotes" for="m_mealDrinkNotes">Meal drink notes</label>
+                <textarea id="m_mealDrinkNotes" placeholder=""></textarea>
+              </div>
+
+              <div id="mealDrinkServeRow" class="action-row" style="display:none">
+                <button class="btn primary" id="serveMealDrink" data-i18n="serveMealDrink">Serve drink</button>
+                <button class="btn ghost" id="serveMealDrinkNone" data-i18n="serveNone">Rien</button>
+                <span id="mhMealDrinkInline" class="action-note"></span>
+              </div>
+
+              <div class="action-row meal-action-row">
+                <button class="btn primary meal-action" id="serveMeal">Serve main</button>
+                <button class="btn ghost meal-action" id="serveMealNone" data-i18n="serveNone">Rien</button>
+                <button class="btn ghost meal-action" id="clearTrayBtn">Plateau debarasse</button>
+              </div>
+
+              <div id="m_history" class="history-log"></div>
+            </div>
+          </section>
+
+          <section class="modal-card" id="tcBlock" style="display:none">
+            <div class="modal-card__header">
+              <div class="title" id="tcTitle">Apéritif</div>
+            </div>
+            <div class="modal-card__content">
+              <div id="drinkGrid" class="pill-grid">
+
+
+  <!-- === HOT DRINKS === -->
+  <div class="group-card" id="grpHot" data-open="false">
+    <div class="group-title" id="hdrHot" role="button" tabindex="0" aria-expanded="false">Hot drinks</div>
+<div class="pill-row" id="hotRow">
+  <div class="pill-wrap">
+    <button class="pill big" data-cat="chaud" data-sub="cafe"     title="Coffee" aria-label="Coffee">☕</button>
+    <div class="pill-cap" data-i18n-cap="drink_coffee">Coffee</div>
+  </div>
+  <div class="pill-wrap">
+    <button class="pill big" data-cat="chaud" data-sub="deca"     title="Decaf" aria-label="Decaf">🚫☕</button>
+    <div class="pill-cap" data-i18n-cap="drink_decaf">Decaf</div>
+  </div>
+  <div class="pill-wrap">
+    <button class="pill big" data-cat="chaud" data-sub="the"      title="Tea" aria-label="Tea">🫖</button>
+    <div class="pill-cap" data-i18n-cap="drink_tea">Tea</div>
+  </div>
+  <div class="pill-wrap">
+    <button class="pill big" data-cat="chaud" data-sub="chocolat" title="Caotina" aria-label="Caotina">🍫</button>
+    <div class="pill-cap" data-i18n-cap="drink_caotina">Caotina</div>
+  </div>
+</div>
+    <div id="hotOpts" class="pill-subrows"></div>
+  </div>
+
+  <!-- === SOFT DRINKS === -->
+  <div class="group-card" id="grpSoft" data-open="false">
+    <div class="group-title" id="hdrSoft" role="button" tabindex="0" aria-expanded="false">Soft drinks</div>
+<div class="pill-row" id="softRow">
+  <div class="pill-wrap">
+    <button class="pill big" data-cat="soft" data-sub="eau"   title="Water" aria-label="Water">💧</button>
+    <div class="pill-cap" data-i18n-cap="drink_water">Water</div>
+  </div>
+  <div class="pill-wrap">
+    <button class="pill big" data-cat="soft" data-sub="coca"  title="Cola" aria-label="Cola">🥤</button>
+    <div class="pill-cap" data-i18n-cap="drink_cola">Cola</div>
+  </div>
+  <div class="pill-wrap">
+    <button class="pill big" data-cat="soft" data-sub="jus"   title="Juice" aria-label="Juice">🧃</button>
+    <div class="pill-cap" data-i18n-cap="drink_juice">Juice</div>
+  </div>
+  <div class="pill-wrap">
+    <button class="pill big" data-cat="soft" data-sub="sprite" title="Sprite" aria-label="Sprite">🟢</button>
+    <div class="pill-cap" data-i18n-cap="drink_sprite">Sprite</div>
+  </div>
+  <div class="pill-wrap">
+    <button class="pill big" data-cat="soft" data-sub="tonic"  title="Tonic" aria-label="Tonic">🫧</button>
+    <div class="pill-cap" data-i18n-cap="drink_tonic">Tonic</div>
+  </div>
+</div>
+    <div id="softOpts" class="pill-subrows"></div>
+  </div>
+
+  <!-- === ALCOHOLIC DRINKS === -->
+  <div class="group-card" id="grpAlco" data-open="false">
+    <div class="group-title" id="hdrAlco" role="button" tabindex="0" aria-expanded="false">Alcoholic drinks</div>
+<div class="pill-row" id="alcoRow">
+  <div class="pill-wrap">
+    <button class="pill big" data-cat="alcool" data-sub="champagne" title="Champagne" aria-label="Champagne">🍾</button>
+    <div class="pill-cap" data-i18n-cap="drink_champagne">Champagne</div>
+  </div>
+  <div class="pill-wrap">
+    <button class="pill big" data-cat="alcool" data-sub="vin_rouge" title="Red wine" aria-label="Red wine">🍷</button>
+    <div class="pill-cap" data-i18n-cap="drink_red">Red wine</div>
+  </div>
+  <div class="pill-wrap">
+    <button class="pill big" data-cat="alcool" data-sub="vin_blanc" title="White wine" aria-label="White wine">🥂</button>
+    <div class="pill-cap" data-i18n-cap="drink_white">White wine</div>
+  </div>
+  <div class="pill-wrap">
+    <button class="pill big" data-cat="alcool" data-sub="biere"     title="Beer" aria-label="Beer">🍺</button>
+    <div class="pill-cap" data-i18n-cap="drink_beer">Beer</div>
+  </div>
+  <div class="pill-wrap">
+    <button class="pill big" data-cat="alcool" data-sub="cocktail"  title="Cocktail" aria-label="Cocktail">🍹</button>
+    <div class="pill-cap" data-i18n-cap="drink_cocktail">Cocktail</div>
+  </div>
+  <div class="pill-wrap">
+    <button class="pill big" data-cat="alcool" data-sub="digestif"  title="Digestif" aria-label="Digestif">🥃</button>
+    <div class="pill-cap" data-i18n-cap="drink_digestif">Digestif</div>
+  </div>
+</div>
+    <div id="alcoOpts" class="pill-subrows"></div>
+  </div>
+
+  <!-- Infobulle recettes cocktails -->
+  <div id="drinkTip" class="pill-tip" style="display:none"></div>
+</div>
+              <!-- === /DRINK GRID === -->
+
+              <div id="aperoNotesBlock" class="form-row form-row--stack">
+                <label class="field-label" id="mdAperoNotes" for="m_aperoNotes">Drink / aperitif notes</label>
+                <textarea id="m_aperoNotes" placeholder="ex: Eau gazeuse, vin blanc, cacahutes"></textarea>
+              </div>
+
+              <div id="tcNotesBlock" class="form-row form-row--stack">
+                <label class="field-label" id="mdTCNotes" for="m_tcNotes">Tea & coffee notes</label>
+                <textarea id="m_tcNotes" placeholder=""></textarea>
+              </div>
+
+              <div id="aperoBlock" class="action-row action-row--stack" style="display:none">
+                <button class="btn primary" id="serveAperitif">Serve aperitif</button>
+                <button class="btn ghost" id="serveAperitifNone" data-i18n="serveNone">Rien</button>
+                <div id="m_history_apero" class="action-note"></div>
+              </div>
+
+              <div id="tcServeBlock" class="action-row" style="display:none">
+                <button class="btn primary" id="serveTC">Serve tea & coffee</button>
+                <button class="btn ghost" id="serveTCNone" data-i18n="serveNone">Rien</button>
+                <span id="mhTCInline" class="action-note"></span>
+              </div>
+            </div>
+          </section>
+        </div> <!-- fin #rightCol -->
+      </div> <!-- /.two -->
+    </div> <!-- /.modal-content -->
+  </div> <!-- /.modal-layout -->
+    </div> <!-- /.modal-shell -->
+  </div>
+</div>
+
+
+  <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+  }
+  </script>
+  <script type="module" src="/src/app/main.ts"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
