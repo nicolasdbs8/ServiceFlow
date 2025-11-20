@@ -2669,11 +2669,35 @@ function buildPassengerCarousel() {
   const carousel = document.getElementById("passengerCarousel");
   if (!carousel || !modalSeat) return;
 
-  const current = parseSeatKeyParts(modalSeat.key);
+  const colPriority = ["A", "B", "C", "D", "E", "F"];
   const seats = store.seats || {};
+  const current = parseSeatKeyParts(modalSeat.key);
+  const isMealPhase = (store.phase || "fiche") === "repas";
   const items = [];
 
-  if (current) {
+  if (isMealPhase) {
+    for (const key of Object.keys(seats)) {
+      const parts = parseSeatKeyParts(key);
+      if (!parts) continue;
+      const seatData = seats[key] || {};
+      if (!seatData.occupied) continue;
+      const served = seatData?.served?.meal;
+      const servedNone = seatData?.served?.mealNone;
+      if (served && !servedNone) continue; // skip already served meals
+      items.push({ key, parts, data: seatData });
+    }
+    if (current && !items.some((it) => it.key === modalSeat.key)) {
+      items.push({ key: modalSeat.key, parts: current, data: modalSeat.data });
+    }
+    items.sort((a, b) => {
+      if (a.parts.row === b.parts.row) {
+        return (
+          colPriority.indexOf(a.parts.col) - colPriority.indexOf(b.parts.col)
+        );
+      }
+      return a.parts.row - b.parts.row;
+    });
+  } else if (current) {
     for (const key of Object.keys(seats)) {
       const parts = parseSeatKeyParts(key);
       if (!parts) continue;
@@ -2686,14 +2710,13 @@ function buildPassengerCarousel() {
     if (!items.some((item) => item.key === modalSeat.key)) {
       items.push({ key: modalSeat.key, parts: current, data: modalSeat.data });
     }
+    items.sort((a, b) => {
+      if (a.parts.row === b.parts.row) {
+        return a.parts.col.localeCompare(b.parts.col);
+      }
+      return b.parts.row - a.parts.row;
+    });
   }
-
-  items.sort((a, b) => {
-    if (a.parts.row === b.parts.row) {
-      return a.parts.col.localeCompare(b.parts.col);
-    }
-    return b.parts.row - a.parts.row;
-  });
 
   passengerCarouselOrder = items.map((item) => item.key);
   carousel.innerHTML = "";
