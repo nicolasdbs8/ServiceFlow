@@ -1,16 +1,4 @@
-// @ts-nocheck
-import {
-  applyDrinkEmojis,
-  configureDrinkMenu,
-  drinkSel,
-  focusDrinkGroup,
-  initDrinkGrid,
-  initializeDrinkMenu,
-  reactivateDrinkGrid,
-  resetDrinkUI,
-  showAllDrinkGroups,
-  updateServeDrinkButtons,
-} from "./features/drinks/menu";
+﻿// @ts-nocheck
 import { I18N } from "./features/i18n/locales";
 
 // Fonction pour rendre un lment cliquable sur PC et tactile
@@ -66,181 +54,6 @@ const store = {
   history: [],
   clientView: false,
 };
-configureDrinkMenu({ getStore: () => store });
-
-const SEAT_ICONS = {
-  infant: "\uD83D\uDC76", // 👶
-  child: "\uD83E\uDDD2", // 🧒
-  sleep: "\uD83D\uDE34", // 😴
-  mealPending: "\uD83C\uDF7D\uFE0F", // 🍽️
-  trayCleared: "\u2705", // ✅
-  later: "\u23F3", // ⏳
-};
-
-const SLEEP_BUTTON_IDS = [
-  "sleepMealBtn",
-  "sleepAperoBtn",
-  "sleepTCBtn",
-  "sleepModalBtn",
-];
-const NOTE_ACCORDION_SECTIONS = [
-  {
-    id: "aperoNotesBlock",
-    labelId: "mdAperoNotes",
-    fallback: "Drink / aperitif notes",
-  },
-  {
-    id: "tcNotesBlock",
-    labelId: "mdTCNotes",
-    fallback: "Tea & coffee notes",
-  },
-  {
-    id: "mealDrinkNotesBlock",
-    labelId: "mdMealDrinkNotes",
-    fallback: "Meal drink notes",
-  },
-];
-const noteAccordionRegistry = new Map();
-function ensureNotesAccordions() {
-  NOTE_ACCORDION_SECTIONS.forEach((cfg) => {
-    const block = document.getElementById(cfg.id);
-    if (!block) return;
-    if (noteAccordionRegistry.has(cfg.id)) {
-      const existing = noteAccordionRegistry.get(cfg.id);
-      bindNoteAccordionLabel(existing);
-      syncNoteAccordionHeader(existing);
-      hideNoteAccordionLabel(existing);
-      return;
-    }
-    const existingChildren = Array.from(block.childNodes);
-    const content = document.createElement("div");
-    content.className = "notes-accordion__content";
-    existingChildren.forEach((child) => {
-      content.appendChild(child);
-    });
-    const header = document.createElement("div");
-    header.className = "accordion__header notes-accordion__header";
-    header.setAttribute("role", "button");
-    header.setAttribute("tabindex", "0");
-    const headerText = document.createElement("span");
-    headerText.className = "notes-accordion__title";
-    header.appendChild(headerText);
-    const body = document.createElement("div");
-    body.className = "accordion__body notes-accordion__body";
-    body.appendChild(content);
-    const section = document.createElement("div");
-    section.className = "accordion__section";
-    section.appendChild(header);
-    section.appendChild(body);
-    while (block.firstChild) {
-      block.removeChild(block.firstChild);
-    }
-    block.classList.add("accordion", "notes-accordion");
-    block.dataset.notesAccordion = "1";
-    block.appendChild(section);
-    const entry = {
-      id: cfg.id,
-      block,
-      section,
-      header,
-      headerText,
-      body,
-      labelId: cfg.labelId,
-      fallback: cfg.fallback,
-      defaultOpen: cfg.defaultOpen === true,
-    };
-    noteAccordionRegistry.set(cfg.id, entry);
-    header.addEventListener("click", () => toggleNoteAccordion(entry));
-    header.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter" || ev.key === " ") {
-        ev.preventDefault();
-        toggleNoteAccordion(entry);
-      }
-    });
-    setNoteAccordionState(entry, entry.defaultOpen);
-    bindNoteAccordionLabel(entry);
-    hideNoteAccordionLabel(entry);
-  });
-}
-function bindNoteAccordionLabel(entry) {
-  if (!entry || entry.labelObserver || !entry.labelId) return;
-  const label = document.getElementById(entry.labelId);
-  if (!label) {
-    syncNoteAccordionHeader(entry);
-    return;
-  }
-  const update = () => syncNoteAccordionHeader(entry);
-  update();
-  if (typeof MutationObserver === "undefined") return;
-  const observer = new MutationObserver(update);
-  observer.observe(label, {
-    characterData: true,
-    childList: true,
-    subtree: true,
-  });
-  entry.labelObserver = observer;
-}
-function syncNoteAccordionHeader(entry) {
-  if (!entry) return;
-  const label = entry.labelId ? document.getElementById(entry.labelId) : null;
-  const txt =
-    (label?.textContent || label?.innerText || "").trim() ||
-    entry.fallback ||
-    "";
-  entry.headerText.textContent = txt;
-}
-function setNoteAccordionState(entry, open) {
-  if (!entry) return;
-  entry.section.dataset.open = open ? "true" : "false";
-  entry.header.setAttribute("aria-expanded", open ? "true" : "false");
-  entry.body.hidden = !open;
-}
-function toggleNoteAccordion(entry) {
-  if (!entry) return;
-  const isOpen = entry.section.dataset.open === "true";
-  setNoteAccordionState(entry, !isOpen);
-}
-
-function hideNoteAccordionLabel(entry) {
-  if (!entry) return;
-  const label = entry.block.querySelector("label");
-  if (label) {
-    label.classList.add("sr-only");
-    label.setAttribute("aria-hidden", "true");
-  }
-}
-
-function syncNoteAccordionsByPhase(phase: string) {
-  const setOpen = (id: string, open: boolean) => {
-    const entry = noteAccordionRegistry.get(id);
-    if (entry) setNoteAccordionState(entry, open);
-  };
-  if (phase === "aperitif") {
-    setOpen("aperoNotesBlock", true);
-    setOpen("tcNotesBlock", false);
-    setOpen("mealDrinkNotesBlock", false);
-  } else if (phase === "tc") {
-    setOpen("aperoNotesBlock", false);
-    setOpen("tcNotesBlock", true);
-    setOpen("mealDrinkNotesBlock", false);
-  } else if (phase === "repas") {
-    setOpen("aperoNotesBlock", false);
-    setOpen("tcNotesBlock", false);
-    setOpen("mealDrinkNotesBlock", false);
-  }
-}
-
-function appendSeatIcon(bar: HTMLElement, emoji: string, label: string) {
-  if (!bar || !emoji) return;
-  const icon = document.createElement("div");
-  icon.className = "icon";
-  icon.textContent = emoji;
-  if (label) {
-    icon.title = label;
-    icon.setAttribute("aria-label", label);
-  }
-  bar.appendChild(icon);
-}
 
 // === Demande de stockage persistant (si support) ===
 (async () => {
@@ -596,24 +409,1300 @@ function clearTcUI() {
   if (_tipBtn) _tipBtn.style.display = "none";
   if (_tipDiv) _tipDiv.style.display = "none";
 }
+const DRINK_EMOJI_BIG = {
+  chaud: {
+    cafe: "☕",
+    deca: "🚫☕",
+    the: "🫖",
+    chocolat: "🍫",
+  },
+  soft: {
+    eau: "💧",
+    coca: "🥤",
+    jus: "🧃",
+    sprite: "🟢",
+    tonic: "🫧",
+  },
+  alcool: {
+    champagne: "🍾",
+    vin_rouge: "🍷",
+    vin_blanc: "🥂",
+    biere: "🍺",
+    cocktail: "🍹",
+    digestif: "🥃",
+  },
+};
+
+const DRINK_EMOJI_OPT = {
+  "milk:creme": "🍶",
+  "milk:avoine": "🌾",
+  "milk:lait": "🥛",
+  "milk:none": "🚫",
+  "sweet:sucre": "🍬",
+  "sweet:succedane": "💊",
+  "sweet:none": "🚫",
+  "theType:english": "\uD83C\uDDEC\uD83C\uDDE7",
+  "theType:vert": "\uD83C\uDF43",
+  "theType:menthe": "\uD83C\uDF3F",
+  "theType:camomille": "\uD83C\uDF3C",
+  "theType:hotwater": "\u2668\uFE0F",
+  "waterType:plate": "💧",
+  "waterType:gazeuse": "💦",
+  "cocaType:normal": "🟥",
+  "cocaType:zero": "⬛",
+  "juiceType:orange": "🍊",
+  "juiceType:pomme": "🍏",
+  "juiceType:tomate": "🍅",
+  "beer:quoellfrisch": "🍺",
+  "beer:calvinus": "⚪",
+  "beer:leermond": "🌚",
+  "vinRouge:suisse": "🇨🇭",
+  "vinRouge:etranger": "🌍",
+  "vinBlanc:suisse": "🇨🇭",
+  "vinBlanc:etranger": "🌍",
+  "digestif:whisky_jw": "🥃",
+  "digestif:whisky_jb": "🤠",
+  "digestif:cognac": "🍇",
+  "digestif:baileys": "🍮",
+  "cocktail:campari": "🟥",
+  "cocktail:bloody_mary": "🩸",
+  "cocktail:screwdriver": "🪛",
+  "cocktail:gin_tonic": "🍸",
+  "cocktail:cuba_libre": "🇨🇺",
+  "campariMix:orange": "🍊",
+  "campariMix:soda": "💦",
+};
+
+const DRINK_EMOJI_FLAG = {
+  theLemon: "🍋",
+  softIce: "🧊",
+  softLemon: "🍋",
+  spriteIce: "🧊",
+  spriteLemon: "🍋",
+  tonicIce: "🧊",
+  tonicLemon: "🍋",
+  juiceIce: "🧊",
+  juiceLemon: "🍋",
+  juiceSP: "🧂",
+  juiceApfelschorle: "💦",
+  champIce: "🧊",
+  champMimosa: "🍊",
+  digIce: "🧊",
+  virginMary: "😇",
+  cocktailIce: "🧊",
+  cocktailLemon: "🍋",
+  cocktailSP: "🧂",
+};
+
+function emojiForBig(cat, sub) {
+  return (DRINK_EMOJI_BIG[cat] && DRINK_EMOJI_BIG[cat][sub]) || "";
+}
+
+function emojiForOpt(key) {
+  return DRINK_EMOJI_OPT[key] || "";
+}
+
+function emojiForFlag(flag) {
+  return DRINK_EMOJI_FLAG[flag] || "";
+}
+
+function applyDrinkEmojis(scope) {
+  const root = scope || document;
+  if (!root || typeof root.querySelectorAll !== "function") return;
+
+  root.querySelectorAll(".pill.big").forEach((btn) => {
+    const cat = btn.dataset.cat;
+    const sub = btn.dataset.sub;
+    const emoji = DRINK_EMOJI_BIG[cat]?.[sub];
+    if (emoji) btn.textContent = emoji;
+  });
+
+  root.querySelectorAll(".pill[data-opt]").forEach((btn) => {
+    const emoji = DRINK_EMOJI_OPT[btn.dataset.opt];
+    if (emoji) btn.textContent = emoji;
+  });
+
+  root.querySelectorAll(".pill.toggle[data-flag]").forEach((btn) => {
+    const emoji = DRINK_EMOJI_FLAG[btn.dataset.flag];
+    if (emoji) btn.textContent = emoji;
+  });
+}
+
+// === Nouvel tat UI unifie (grille) ===
+const drinkSel = {
+  cat: "",
+  sub: "",
+  waterType: "",
+  juiceType: "",
+  cocaType: "",
+  softIce: false,
+  softLemon: false,
+  spriteIce: false,
+  spriteLemon: false,
+  tonicIce: false,
+  tonicLemon: false,
+  juiceIce: false,
+  juiceLemon: false,
+  juiceSalt: false,
+  juicePepper: false,
+  beer: "",
+  vinRouge: "",
+  vinBlanc: "",
+  vinNotes: "",
+  vinIce: false,
+  champIce: false,
+  digestif: "",
+  whiskyStyle: "",
+  digIce: false,
+  cocktail: "",
+  cocktailIce: false,
+  cocktailLemon: false,
+  cocktailSalt: false,
+  cocktailPepper: false,
+  milk: "",
+  sweet: "",
+  theType: "",
+  choco: false,
+  theLemon: false,
+  juiceApfelschorle: false,
+  champMimosa: false,
+  campariMix: "", // "orange" | "soda"
+  virginMary: false,
+};
+
+// === NOUVEAU : dlgation unique DRINK GRID (pointer events)
+(function bindDrinkGrid() {
+  if (window.__DRINK_GRID_BOUND) return;
+  window.__DRINK_GRID_BOUND = true;
+
+  const isModalOpen = () => {
+    const mb = document.getElementById("modalBack");
+    return !!mb && (mb.style.display === "" || mb.style.display === "flex");
+  };
+
+  document.addEventListener(
+    "pointerup",
+    function (ev) {
+      if (!isModalOpen()) return;
+
+      const grid = document.getElementById("drinkGrid");
+      if (!grid) return;
+
+      const t = ev.target.closest("#drinkGrid .pill");
+      if (!t) return;
+
+      // === 1) CLIC SUR UNE GROSSE PILL (catgorie)
+      if (t.classList.contains("big")) {
+        const active = t.classList.contains("active");
+
+        // reset UI + state
+        document.querySelectorAll("#drinkGrid .pill.big").forEach((x) => {
+          x.classList.remove("active");
+          x.setAttribute("aria-pressed", "false");
+        });
+        ["hotOpts", "softOpts", "alcoOpts"].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.innerHTML = "";
+        });
+        Object.keys(drinkSel).forEach((k) => {
+          drinkSel[k] = typeof drinkSel[k] === "boolean" ? false : "";
+        });
+
+        if (typeof updateServeDrinkButtons === "function")
+          updateServeDrinkButtons();
+
+        if (active) {
+          if (typeof showAllDrinkGroups === "function") showAllDrinkGroups();
+          if (typeof updateServeDrinkButtons === "function")
+            updateServeDrinkButtons();
+          return;
+        }
+
+        // nouvelle slection
+        t.classList.add("active");
+        t.setAttribute("aria-pressed", "true");
+        drinkSel.cat = t.dataset.cat || "";
+        drinkSel.sub = t.dataset.sub || "";
+
+        // [FIX immdiat] activer le bon bouton pour les 1er-niveau autoriss
+        (function () {
+          const L1_OK = new Set([
+            "cafe",
+            "deca",
+            "chocolat",
+            "sprite",
+            "tonic",
+            "champagne",
+          ]);
+          if (!L1_OK.has(drinkSel.sub)) return;
+
+          let btn = null;
+          if (store.phase === "aperitif")
+            btn = document.getElementById("serveAperitif");
+          else if (store.phase === "tc")
+            btn = document.getElementById("serveTC");
+          else if (store.phase === "repas")
+            btn = document.getElementById("serveMealDrink");
+
+          if (btn) btn.disabled = false;
+        })();
+
+        if (typeof focusDrinkGroup === "function")
+          focusDrinkGroup(drinkSel.cat);
+        if (typeof renderOptionsFor === "function")
+          renderOptionsFor(drinkSel.cat, drinkSel.sub);
+        if (typeof updateServeDrinkButtons === "function")
+          updateServeDrinkButtons();
+        return;
+      }
+
+      // === 2) OPTIONS EXCLUSIVES (data-opt="cl:valeur")
+      if (t.dataset.opt) {
+        const [key, val] = t.dataset.opt.split(":");
+        const scope = t.closest(".pill-subrows") || grid;
+
+        // mmoriser l'tat avant de vider le groupe
+        const wasActive = t.classList.contains("active");
+
+        // exclusivit dans le mme groupe
+        scope.querySelectorAll(`.pill[data-opt^="${key}:"]`).forEach((x) => {
+          x.classList.remove("active");
+          x.setAttribute("aria-pressed", "false");
+        });
+
+        // toggle correct : si on reclique le mme => on dslectionne
+        if (wasActive) {
+          t.classList.remove("active");
+          t.setAttribute("aria-pressed", "false");
+          drinkSel[key] = "";
+        } else {
+          t.classList.add("active");
+          t.setAttribute("aria-pressed", "true");
+          drinkSel[key] = val || "";
+        }
+
+        // rgles d'affichage spciales
+        if (key === "juiceType") {
+          // sel+poivre visibles seulement pour
+          document
+            .querySelectorAll("#softOpts .jt-extra")
+            .forEach((x) => (x.style.display = val === "tomate" ? "" : "none"));
+        }
+        if (key === "cocktail") {
+          const showC = val === "campari";
+          const showB = val === "bloody_mary";
+          const cr = document.getElementById("campariRow"),
+            ct = document.getElementById("campariTitle");
+          const br = document.getElementById("bmRow"),
+            bt = document.getElementById("bmTitle");
+          const spBtn = document.querySelector(
+            '#alcoOpts .pill.toggle[data-flag="cocktailSP"]'
+          );
+          if (cr && ct) {
+            cr.style.display = showC ? "" : "none";
+            ct.style.display = showC ? "" : "none";
+          }
+          if (br && bt) {
+            br.style.display = showB ? "" : "none";
+            bt.style.display = showB ? "" : "none";
+          }
+          if (spBtn) spBtn.style.display = showB ? "" : "none";
+        }
+
+        if (typeof updateServeDrinkButtons === "function")
+          updateServeDrinkButtons();
+        return;
+      }
+
+      // === 3) TOGGLES (on/off) (data-flag)
+      if (t.classList.contains("toggle") && t.dataset.flag) {
+        const key = t.dataset.flag;
+        const next = !drinkSel[key];
+        drinkSel[key] = next;
+        t.classList.toggle("active", next);
+        t.setAttribute("aria-pressed", String(next));
+
+        // combos
+        if (key === "juiceSP") {
+          drinkSel.juiceSalt = next;
+          drinkSel.juicePepper = next;
+        }
+        if (key === "cocktailSP") {
+          drinkSel.cocktailSalt = next;
+          drinkSel.cocktailPepper = next;
+        }
+
+        if (typeof updateServeDrinkButtons === "function")
+          updateServeDrinkButtons();
+        return;
+      }
+    },
+    true
+  ); // capture pour passer avant d'ventuels stopPropagation
+})();
+
+// Remplit les lgendes sous chaque emoji depuis le title (fallback immdiat)
+(function initPillCaptions() {
+  document.querySelectorAll("#drinkGrid .pill-wrap").forEach((wrap) => {
+    const btn = wrap.querySelector("button.pill.big");
+    const cap = wrap.querySelector(".pill-cap");
+    if (!btn || !cap) return;
+    // Si on a une cl i18n plus tard, elle remplacera ce texte
+    cap.textContent =
+      cap.textContent && cap.textContent.trim()
+        ? cap.textContent
+        : (
+            btn.getAttribute("aria-label") ||
+            btn.getAttribute("title") ||
+            ""
+          ).trim();
+  });
+})();
+
+function L() {
+  return I18N[store.config.lang || "EN"] || I18N.EN;
+}
+
+function renderOptionsFor(cat, sub) {
+  const tip = document.getElementById("drinkTip");
+  if (tip) tip.style.display = "none";
+
+  const L = (k, d) =>
+    (I18N[store.config.lang || "EN"] || I18N.EN)[k] || d || "";
+  const on = (sel, fn) => {
+    document.querySelectorAll(sel).forEach(fn);
+  };
+
+  // --- HOT (caf, dca, th, chocolat) ---
+  if (cat === "chaud") {
+    const box = document.getElementById("hotOpts");
+    if (!box) return;
+    box.innerHTML = "";
+
+    if (sub === "cafe" || sub === "deca") {
+      box.innerHTML = `
+  <div class="opt-title"> ${L("tcMilk", "Milk/Cream")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill" data-opt="milk:creme"  title="${L(
+        "tcMilkCreme",
+        "Cream"
+      )}" aria-label="${L("tcMilkCreme", "Cream")}">${emojiForOpt(
+        "milk:creme"
+      )}</button>
+      <div class="pill-cap">${L("tcMilkCreme", "Cream")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="milk:avoine" title="${L(
+        "tcMilkAvoine",
+        "Oat milk"
+      )}" aria-label="${L("tcMilkAvoine", "Oat milk")}">${emojiForOpt(
+        "milk:avoine"
+      )}</button>
+      <div class="pill-cap">${L("tcMilkAvoine", "Oat milk")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="milk:lait"   title="${L(
+        "tcMilkLait",
+        "Milk"
+      )}" aria-label="${L("tcMilkLait", "Milk")}">${emojiForOpt(
+        "milk:lait"
+      )}</button>
+      <div class="pill-cap">${L("tcMilkLait", "Milk")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="milk:none"   title="${L(
+        "tcMilkNone",
+        "None"
+      )}" aria-label="${L("tcMilkNone", "None")}">${emojiForOpt(
+        "milk:none"
+      )}</button>
+      <div class="pill-cap">${L("tcMilkNone", "None")}</div>
+    </div>
+  </div>
+
+  <div class="opt-title"> ${L("tcSweet", "Sweetener")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill" data-opt="sweet:sucre"       title="${L(
+        "tcSweetSugar",
+        "Sugar"
+      )}" aria-label="${L("tcSweetSugar", "Sugar")}">${emojiForOpt(
+        "sweet:sucre"
+      )}</button>
+      <div class="pill-cap">${L("tcSweetSugar", "Sugar")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="sweet:succedane"   title="${L(
+        "tcSweetSub",
+        "Substitute"
+      )}" aria-label="${L("tcSweetSub", "Substitute")}">${emojiForOpt(
+        "sweet:succedane"
+      )}</button>
+      <div class="pill-cap">${L("tcSweetSub", "Substitute")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="sweet:none"        title="${L(
+        "tcSweetNone",
+        "None"
+      )}" aria-label="${L("tcSweetNone", "None")}">${emojiForOpt(
+        "sweet:none"
+      )}</button>
+      <div class="pill-cap">${L("tcSweetNone", "None")}</div>
+    </div>
+  </div>`;
+    } else if (sub === "the") {
+      box.innerHTML = `
+  <div class="opt-title"> ${L("tcCatThe", "Tea")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill" data-opt="theType:english"  title="${L(
+        "tcTeaEnglish",
+        "English Breakfast"
+      )}" aria-label="${L("tcTeaEnglish", "English Breakfast")}">${emojiForOpt(
+        "theType:english"
+      )}</button>
+      <div class="pill-cap">${L("tcTeaEnglish", "English Breakfast")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="theType:vert"     title="${L(
+        "tcTeaVert",
+        "Green"
+      )}" aria-label="${L("tcTeaVert", "Green")}">${emojiForOpt(
+        "theType:vert"
+      )}</button>
+      <div class="pill-cap">${L("tcTeaVert", "Green")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="theType:menthe"   title="${L(
+        "tcTeaMenthe",
+        "Mint"
+      )}" aria-label="${L("tcTeaMenthe", "Mint")}">${emojiForOpt(
+        "theType:menthe"
+      )}</button>
+      <div class="pill-cap">${L("tcTeaMenthe", "Mint")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="theType:camomille" title="${L(
+        "tcTeaCamomille",
+        "Chamomile"
+      )}" aria-label="${L("tcTeaCamomille", "Chamomile")}">${emojiForOpt(
+        "theType:camomille"
+      )}</button>
+      <div class="pill-cap">${L("tcTeaCamomille", "Chamomile")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="theType:hotwater" title="${L(
+        "tcHotWater",
+        "Hot water"
+      )}" aria-label="${L("tcHotWater", "Hot water")}">${emojiForOpt(
+        "theType:hotwater"
+      )}</button>
+      <div class="pill-cap">${L("tcHotWater", "Hot water")}</div>
+    </div>
+  </div>
+
+  <div class="opt-title"> ${L("tcMilk", "Milk/Cream")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill" data-opt="milk:creme"  title="${L(
+        "tcMilkCreme",
+        "Cream"
+      )}" aria-label="${L("tcMilkCreme", "Cream")}">${emojiForOpt(
+        "milk:creme"
+      )}</button>
+      <div class="pill-cap">${L("tcMilkCreme", "Cream")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="milk:avoine" title="${L(
+        "tcMilkAvoine",
+        "Oat milk"
+      )}" aria-label="${L("tcMilkAvoine", "Oat milk")}">${emojiForOpt(
+        "milk:avoine"
+      )}</button>
+      <div class="pill-cap">${L("tcMilkAvoine", "Oat milk")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="milk:lait"   title="${L(
+        "tcMilkLait",
+        "Milk"
+      )}" aria-label="${L("tcMilkLait", "Milk")}">${emojiForOpt(
+        "milk:lait"
+      )}</button>
+      <div class="pill-cap">${L("tcMilkLait", "Milk")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="milk:none"   title="${L(
+        "tcMilkNone",
+        "None"
+      )}" aria-label="${L("tcMilkNone", "None")}">${emojiForOpt(
+        "milk:none"
+      )}</button>
+      <div class="pill-cap">${L("tcMilkNone", "None")}</div>
+    </div>
+  </div>
+
+  <div class="opt-title"> ${L("tcSweet", "Sugar")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill" data-opt="sweet:sucre"     title="${L(
+        "tcSweetSugar",
+        "Sugar"
+      )}" aria-label="${L("tcSweetSugar", "Sugar")}">${emojiForOpt(
+        "sweet:sucre"
+      )}</button>
+      <div class="pill-cap">${L("tcSweetSugar", "Sugar")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="sweet:succedane" title="${L(
+        "tcSweetSub",
+        "Substitute"
+      )}" aria-label="${L("tcSweetSub", "Substitute")}">${emojiForOpt(
+        "sweet:succedane"
+      )}</button>
+      <div class="pill-cap">${L("tcSweetSub", "Substitute")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="sweet:none"      title="${L(
+        "tcSweetNone",
+        "None"
+      )}" aria-label="${L("tcSweetNone", "None")}">${emojiForOpt(
+        "sweet:none"
+      )}</button>
+      <div class="pill-cap">${L("tcSweetNone", "None")}</div>
+    </div>
+  </div>
+
+  <div class="opt-title"> ${L("tcLemon", "Lemon")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="theLemon" title="${L(
+        "tcLemon",
+        "Lemon"
+      )}" aria-label="${L("tcLemon", "Lemon")}">${emojiForFlag(
+        "theLemon"
+      )}</button>
+      <div class="pill-cap">${L("tcLemon", "Lemon")}</div>
+    </div>
+  </div>`;
+    } else if (sub === "chocolat") {
+      box.innerHTML = `<div class="opt-title"> ${L(
+        "tcCatChoco",
+        "Caotina"
+      )}</div>`;
+    }
+
+    // exclusifs + toggles
+    attachExclusive('#hotOpts .pill[data-opt^="milk"]', "milk");
+    attachExclusive('#hotOpts .pill[data-opt^="sweet"]', "sweet");
+    attachExclusive('#hotOpts .pill[data-opt^="theType"]', "theType");
+  }
+
+  // --- SOFT (eau/cola/jus/sprite/tonic) ---
+  else if (cat === "soft") {
+    const box = document.getElementById("softOpts");
+    if (!box) return;
+    box.innerHTML = "";
+
+    if (sub === "eau") {
+      box.innerHTML = `
+        <div class="opt-title"> ${L("tcWater", "Water")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill" data-opt="waterType:plate"   title="${L(
+        "tcWaterStill",
+        "Still"
+      )}"      aria-label="${L("tcWaterStill", "Still")}">${emojiForOpt(
+        "waterType:plate"
+      )}</button>
+      <div class="pill-cap">${L("tcWaterStill", "Still")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="waterType:gazeuse" title="${L(
+        "tcWaterSpark",
+        "Sparkling"
+      )}"  aria-label="${L("tcWaterSpark", "Sparkling")}">${emojiForOpt(
+        "waterType:gazeuse"
+      )}</button>
+      <div class="pill-cap">${L("tcWaterSpark", "Sparkling")}</div>
+    </div>
+  </div>
+  <div class="opt-title">${L("tcExtras", "Options")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="softIce"   title="${L(
+        "tcIce",
+        "Ice"
+      )}"    aria-label="${L("tcIce", "Ice")}">${emojiForFlag(
+        "softIce"
+      )}</button>
+      <div class="pill-cap">${L("tcIce", "Ice")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="softLemon" title="${L(
+        "tcLemon",
+        "Lemon"
+      )}" aria-label="${L("tcLemon", "Lemon")}">${emojiForFlag(
+        "softLemon"
+      )}</button>
+      <div class="pill-cap">${L("tcLemon", "Lemon")}</div>
+    </div>
+  </div>`;
+    } else if (sub === "coca") {
+      box.innerHTML = `
+<div class="opt-title"> ${L("tcCola", "Cola")}</div>
+<div class="pill-row">
+  <div class="pill-wrap">
+    <button class="pill" data-opt="cocaType:normal" title="${L(
+      "tcCocaClassic",
+      "Classic"
+    )}" aria-label="${L("tcCocaClassic", "Classic")}">${emojiForOpt(
+        "cocaType:normal"
+      )}</button>
+    <div class="pill-cap">${L("tcCocaClassic", "Classic")}</div>
+  </div>
+  <div class="pill-wrap">
+    <button class="pill" data-opt="cocaType:zero"   title="${L(
+      "tcCocaZero",
+      "Zero"
+    )}"       aria-label="${L("tcCocaZero", "Zero")}">${emojiForOpt(
+        "cocaType:zero"
+      )}</button>
+    <div class="pill-cap">${L("tcCocaZero", "Zero")}</div>
+  </div>
+</div>
+<div class="opt-title">${L("tcExtras", "Options")}</div>
+<div class="pill-row">
+  <div class="pill-wrap">
+    <button class="pill toggle" data-flag="softIce"   title="${L(
+      "tcIce",
+      "Ice"
+    )}"    aria-label="${L("tcIce", "Ice")}">${emojiForFlag("softIce")}</button>
+    <div class="pill-cap">${L("tcIce", "Ice")}</div>
+  </div>
+  <div class="pill-wrap">
+    <button class="pill toggle" data-flag="softLemon" title="${L(
+      "tcLemon",
+      "Lemon"
+    )}" aria-label="${L("tcLemon", "Lemon")}">${emojiForFlag(
+        "softLemon"
+      )}</button>
+    <div class="pill-cap">${L("tcLemon", "Lemon")}</div>
+  </div>
+</div>`;
+    } else if (sub === "sprite") {
+      box.innerHTML = `
+  <div class="opt-title"> ${L("tcSprite", "Sprite")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="spriteIce" title="${L(
+        "tcIce",
+        "Ice"
+      )}" aria-label="${L("tcIce", "Ice")}">${emojiForFlag(
+        "spriteIce"
+      )}</button>
+      <div class="pill-cap">${L("tcIce", "Ice")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="spriteLemon" title="${L(
+        "tcLemon",
+        "Lemon"
+      )}" aria-label="${L("tcLemon", "Lemon")}">${emojiForFlag(
+        "spriteLemon"
+      )}</button>
+      <div class="pill-cap">${L("tcLemon", "Lemon")}</div>
+    </div>
+  </div>`;
+    } else if (sub === "tonic") {
+      box.innerHTML = `
+  <div class="opt-title"> ${L("tcTonic", "Tonic")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="tonicIce" title="${L(
+        "tcIce",
+        "Ice"
+      )}" aria-label="${L("tcIce", "Ice")}">${emojiForFlag("tonicIce")}</button>
+      <div class="pill-cap">${L("tcIce", "Ice")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="tonicLemon" title="${L(
+        "tcLemon",
+        "Lemon"
+      )}" aria-label="${L("tcLemon", "Lemon")}">${emojiForFlag(
+        "tonicLemon"
+      )}</button>
+      <div class="pill-cap">${L("tcLemon", "Lemon")}</div>
+    </div>
+  </div>`;
+    } else if (sub === "jus") {
+      box.innerHTML = `
+  <div class="opt-title"> ${L("tcJuice", "Juice")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill" data-opt="juiceType:orange" title="${L(
+        "tcJuiceOrange",
+        "Orange"
+      )}" aria-label="${L("tcJuiceOrange", "Orange")}">${emojiForOpt(
+        "juiceType:orange"
+      )}</button>
+      <div class="pill-cap">${L("tcJuiceOrange", "Orange")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="juiceType:pomme"  title="${L(
+        "tcJuiceApple",
+        "Apple"
+      )}"   aria-label="${L("tcJuiceApple", "Apple")}">${emojiForOpt(
+        "juiceType:pomme"
+      )}</button>
+      <div class="pill-cap">${L("tcJuiceApple", "Apple")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="juiceType:tomate" title="${L(
+        "tcJuiceTomato",
+        "Tomato"
+      )}" aria-label="${L("tcJuiceTomato", "Tomato")}">${emojiForOpt(
+        "juiceType:tomate"
+      )}</button>
+      <div class="pill-cap">${L("tcJuiceTomato", "Tomato")}</div>
+    </div>
+  </div>
+
+  <div class="opt-title">${L("tcExtras", "Options")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="juiceIce"    title="${L(
+        "tcIce",
+        "Ice"
+      )}"     aria-label="${L("tcIce", "Ice")}">${emojiForFlag(
+        "juiceIce"
+      )}</button>
+      <div class="pill-cap">${L("tcIce", "Ice")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="juiceLemon"  title="${L(
+        "tcLemon",
+        "Lemon"
+      )}" aria-label="${L("tcLemon", "Lemon")}">${emojiForFlag(
+        "juiceLemon"
+      )}</button>
+      <div class="pill-cap">${L("tcLemon", "Lemon")}</div>
+    </div>
+    <div class="pill-wrap jt-extra" style="display:none">
+      <button class="pill toggle" data-flag="juiceSP"
+        title="${L("tcSalt", "Salt")} + ${L("tcPepper", "Pepper")}"
+        aria-label="${L("tcSalt", "Salt")} + ${L(
+        "tcPepper",
+        "Pepper"
+      )}">${emojiForFlag("juiceSP")}</button>
+      <div class="pill-cap">${L("tcSalt", "Salt")} + ${L(
+        "tcPepper",
+        "Pepper"
+      )}</div>
+    </div>
+  </div>
+
+  <div class="opt-title" id="apfelTitle" style="display:none">${L(
+    "tcApfelschorle",
+    "Apfelschorle"
+  )}</div>
+  <div class="pill-row" id="apfelRow" style="display:none">
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="juiceApfelschorle" title="${L(
+        "tcApfelschorle",
+        "Apfelschorle"
+      )}" aria-label="${L("tcApfelschorle", "Apfelschorle")}">${emojiForFlag(
+        "juiceApfelschorle"
+      )}</button>
+      <div class="pill-cap">${L("tcApfelschorle", "Apfelschorle")}</div>
+    </div>
+  </div>`;
+
+      // montrer sel/poivre seulement pour
+      on('#softOpts .pill[data-opt^="juiceType"]', (b) =>
+        b.addEventListener("click", () => {
+          const t = b.dataset.opt.split(":")[1];
+          document
+            .querySelectorAll("#softOpts .jt-extra")
+            .forEach((x) => (x.style.display = t === "tomate" ? "" : "none"));
+          const onApple = t === "pomme";
+          const apfRow = document.getElementById("apfelRow");
+          const apfTit = document.getElementById("apfelTitle");
+          if (apfRow && apfTit) {
+            apfRow.style.display = onApple ? "" : "none";
+            apfTit.style.display = onApple ? "" : "none";
+          }
+        })
+      );
+    }
+
+    attachExclusive('#softOpts .pill[data-opt^="waterType"]', "waterType");
+    attachExclusive('#softOpts .pill[data-opt^="cocaType"]', "cocaType");
+    attachExclusive('#softOpts .pill[data-opt^="juiceType"]', "juiceType");
+  }
+
+  // --- ALCOOL (bire, vins, champagne, digestif, cocktail) ---
+  else if (cat === "alcool") {
+    const box = document.getElementById("alcoOpts");
+    if (!box) return;
+    box.innerHTML = "";
+
+    if (sub === "biere") {
+      box.innerHTML = `
+  <div class="opt-title">${L("tcBeer", "Beer")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill" data-opt="beer:quoellfrisch" title="${L(
+        "tcBeerQ",
+        "Qullfrisch Lager"
+      )}" aria-label="${L("tcBeerQ", "Qullfrisch Lager")}">${emojiForOpt(
+        "beer:quoellfrisch"
+      )}</button>
+      <div class="pill-cap">${L("tcBeerQ", "Qullfrisch Lager")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="beer:calvinus"     title="${L(
+        "tcBeerC",
+        "Calvinus Blanche"
+      )}"  aria-label="${L("tcBeerC", "Calvinus Blanche")}">${emojiForOpt(
+        "beer:calvinus"
+      )}</button>
+      <div class="pill-cap">${L("tcBeerC", "Calvinus Blanche")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="beer:leermond"     title="${L(
+        "tcBeerL",
+        "Leermond (0%)"
+      )}"     aria-label="${L("tcBeerL", "Leermond (0%)")}">${emojiForOpt(
+        "beer:leermond"
+      )}</button>
+      <div class="pill-cap">${L("tcBeerL", "Leermond (0%)")}</div>
+    </div>
+  </div>`;
+
+      attachExclusive('#alcoOpts .pill[data-opt^="beer"]', "beer");
+    } else if (sub === "vin_rouge") {
+      box.innerHTML = `
+  <div class="opt-title"> ${L("tcWines", "Wines")}  ${L("tcRed", "Red")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill" data-opt="vinRouge:suisse"   title="${L(
+        "tcCH",
+        "Swiss"
+      )}" aria-label="${L("tcCH", "Swiss")}">${emojiForOpt(
+        "vinRouge:suisse"
+      )}</button>
+      <div class="pill-cap">${L("tcCH", "Swiss")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="vinRouge:etranger" title="${L(
+        "tcForeign",
+        "Foreign"
+      )}" aria-label="${L("tcForeign", "Foreign")}">${emojiForOpt(
+        "vinRouge:etranger"
+      )}</button>
+      <div class="pill-cap">${L("tcForeign", "Foreign")}</div>
+    </div>
+  </div>`;
+      attachExclusive('#alcoOpts .pill[data-opt^="vinRouge"]', "vinRouge");
+    } else if (sub === "vin_blanc") {
+      box.innerHTML = `
+  <div class="opt-title"> ${L("tcWines", "Wines")}  ${L(
+        "tcWhite",
+        "White"
+      )}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill" data-opt="vinBlanc:suisse"   title="${L(
+        "tcCH",
+        "Swiss"
+      )}"     aria-label="${L("tcCH", "Swiss")}">${emojiForOpt(
+        "vinBlanc:suisse"
+      )}</button>
+      <div class="pill-cap">${L("tcCH", "Swiss")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="vinBlanc:etranger" title="${L(
+        "tcForeign",
+        "Foreign"
+      )}" aria-label="${L("tcForeign", "Foreign")}">${emojiForOpt(
+        "vinBlanc:etranger"
+      )}</button>
+      <div class="pill-cap">${L("tcForeign", "Foreign")}</div>
+    </div>
+  </div>`;
+      attachExclusive('#alcoOpts .pill[data-opt^="vinBlanc"]', "vinBlanc");
+    } else if (sub === "champagne") {
+      box.innerHTML = `
+  <div class="opt-title"> ${L("tcChampagne", "Champagne")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="champIce"    title="${L(
+        "tcIce",
+        "Ice"
+      )}" aria-label="${L("tcIce", "Ice")}">${emojiForFlag("champIce")}</button>
+      <div class="pill-cap">${L("tcIce", "Ice")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="champMimosa" title="Mimosa" aria-label="Mimosa">${emojiForFlag(
+        "champMimosa"
+      )}</button>
+      <div class="pill-cap">Mimosa</div>
+    </div>
+  </div>`;
+    } else if (sub === "digestif") {
+      box.innerHTML = `
+  <div class="opt-title">${L("tcDigestif", "Digestif")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill" data-opt="digestif:whisky_jw" title="${L(
+        "tcDigJW",
+        "Whisky  Johnnie Walker"
+      )}" aria-label="${L("tcDigJW", "Whisky  Johnnie Walker")}">${emojiForOpt(
+        "digestif:whisky_jw"
+      )}</button>
+      <div class="pill-cap">${L("tcDigJW", "Johnnie Walker")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="digestif:whisky_jb" title="${L(
+        "tcDigJB",
+        "Whisky  Jim Beam (Bourbon)"
+      )}" aria-label="${L(
+        "tcDigJB",
+        "Whisky  Jim Beam (Bourbon)"
+      )}">${emojiForOpt("digestif:whisky_jb")}</button>
+      <div class="pill-cap">${L("tcDigJB", "Jim Beam")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="digestif:cognac"    title="${L(
+        "tcDigCognac",
+        "Cognac"
+      )}" aria-label="${L("tcDigCognac", "Cognac")}">${emojiForOpt(
+        "digestif:cognac"
+      )}</button>
+      <div class="pill-cap">${L("tcDigCognac", "Cognac")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="digestif:baileys"   title="${L(
+        "tcDigBaileys",
+        "Baileys"
+      )}" aria-label="${L("tcDigBaileys", "Baileys")}">${emojiForOpt(
+        "digestif:baileys"
+      )}</button>
+      <div class="pill-cap">${L("tcDigBaileys", "Baileys")}</div>
+    </div>
+  </div>
+
+  <div class="opt-title">${L("tcExtras", "Options")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="digIce" title="${L(
+        "tcIce",
+        "Ice"
+      )}" aria-label="${L("tcIce", "Ice")}">${emojiForFlag("digIce")}</button>
+      <div class="pill-cap">${L("tcIce", "Ice")}</div>
+    </div>
+  </div>`;
+
+      attachExclusive('#alcoOpts .pill[data-opt^="digestif"]', "digestif");
+    } else if (sub === "cocktail") {
+      box.innerHTML = `
+  <div class="opt-title"> ${L("tcCocktail", "Cocktail")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill" data-opt="cocktail:campari"       title="${L(
+        "tcCampari",
+        "Campari"
+      )}" aria-label="${L("tcCampari", "Campari")}">${emojiForOpt(
+        "cocktail:campari"
+      )}</button>
+      <div class="pill-cap">${L("tcCampari", "Campari")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="cocktail:bloody_mary"   title="${L(
+        "tcBloody",
+        "Bloody Mary"
+      )}" aria-label="${L("tcBloody", "Bloody Mary")}">${emojiForOpt(
+        "cocktail:bloody_mary"
+      )}</button>
+      <div class="pill-cap">${L("tcBloody", "Bloody Mary")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="cocktail:screwdriver"   title="${L(
+        "tcScrew",
+        "Screw Driver"
+      )}" aria-label="${L("tcScrew", "Screw Driver")}">${emojiForOpt(
+        "cocktail:screwdriver"
+      )}</button>
+      <div class="pill-cap">${L("tcScrew", "Screw Driver")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="cocktail:gin_tonic"     title="${L(
+        "tcGinTonic",
+        "Gin Tonic"
+      )}" aria-label="${L("tcGinTonic", "Gin Tonic")}">${emojiForOpt(
+        "cocktail:gin_tonic"
+      )}</button>
+      <div class="pill-cap">${L("tcGinTonic", "Gin Tonic")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="cocktail:cuba_libre"    title="${L(
+        "tcCuba",
+        "Cuba Libre"
+      )}"     aria-label="${L("tcCuba", "Cuba Libre")}">${emojiForOpt(
+        "cocktail:cuba_libre"
+      )}</button>
+      <div class="pill-cap">${L("tcCuba", "Cuba Libre")}</div>
+    </div>
+  </div>
+
+  <div class="opt-title" id="campariTitle" style="display:none">${L(
+    "tcCampari",
+    "Campari"
+  )}</div>
+  <div class="pill-row"  id="campariRow"   style="display:none">
+    <div class="pill-wrap">
+      <button class="pill" data-opt="campariMix:orange" title="${L(
+        "tcJuiceOrange",
+        "Orange"
+      )}" aria-label="${L("tcJuiceOrange", "Orange")}">${emojiForOpt(
+        "campariMix:orange"
+      )}</button>
+      <div class="pill-cap">${L("tcJuiceOrange", "Orange")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill" data-opt="campariMix:soda"   title="${L(
+        "tcSoda",
+        "Soda"
+      )}" aria-label="${L("tcSoda", "Soda")}">${emojiForOpt(
+        "campariMix:soda"
+      )}</button>
+      <div class="pill-cap">${L("tcSoda", "Soda")}</div>
+    </div>
+  </div>
+
+  <div class="opt-title" id="bmTitle" style="display:none">${L(
+    "tcBloody",
+    "Bloody Mary"
+  )}</div>
+  <div class="pill-row"  id="bmRow"   style="display:none">
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="virginMary" title="${L(
+        "tcVirgin",
+        "Virgin Mary"
+      )}" aria-label="${L("tcVirgin", "Virgin Mary")}">${emojiForFlag(
+        "virginMary"
+      )}</button>
+      <div class="pill-cap">${L("tcVirgin", "Virgin Mary")}</div>
+    </div>
+  </div>
+
+  <div class="opt-title">${L("tcExtras", "Options")}</div>
+  <div class="pill-row">
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="cocktailIce"   title="${L(
+        "tcIce",
+        "Ice"
+      )}"     aria-label="${L("tcIce", "Ice")}">${emojiForFlag(
+        "cocktailIce"
+      )}</button>
+      <div class="pill-cap">${L("tcIce", "Ice")}</div>
+    </div>
+    <div class="pill-wrap">
+      <button class="pill toggle" data-flag="cocktailLemon" title="${L(
+        "tcLemon",
+        "Lemon"
+      )}" aria-label="${L("tcLemon", "Lemon")}">${emojiForFlag(
+        "cocktailLemon"
+      )}</button>
+      <div class="pill-cap">${L("tcLemon", "Lemon")}</div>
+    </div>
+    <div class="pill-wrap" style="display:none">
+      <button class="pill toggle" data-flag="cocktailSP"
+        title="${L("tcSalt", "Salt")} + ${L("tcPepper", "Pepper")}"
+        aria-label="${L("tcSalt", "Salt")} + ${L(
+        "tcPepper",
+        "Pepper"
+      )}">${emojiForFlag("cocktailSP")}</button>
+      <div class="pill-cap">${L("tcSalt", "Salt")} + ${L(
+        "tcPepper",
+        "Pepper"
+      )}</div>
+    </div>
+  </div>`;
+    }
+  }
+
+  applyDrinkEmojis(document.getElementById("drinkGrid"));
+}
+
+function getCocktailTip(code) {
+  const tips = (window.COCKTAIL_TIPS || {})[store.config.lang || "EN"] || {};
+  const arr = tips[code] || [];
+  return `<div class="tip-list">${arr
+    .map((l) => `<div>${l}</div>`)
+    .join("")}</div>`;
+}
+
+function showAllDrinkGroups() {
+  ["grpHot", "grpSoft", "grpAlco"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "";
+  });
+}
+
+function focusDrinkGroup(byCat) {
+  // byCat: 'chaud' | 'soft' | 'alcool'
+  const keep =
+    byCat === "chaud" ? "grpHot" : byCat === "soft" ? "grpSoft" : "grpAlco";
+  ["grpHot", "grpSoft", "grpAlco"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === keep ? "" : "none";
+  });
+}
+
+function resetDrinkUI(hard) {
+  // reset de l'tat logique
+  if (typeof drinkSel === "object") {
+    Object.keys(drinkSel).forEach((k) => {
+      drinkSel[k] = typeof drinkSel[k] === "boolean" ? false : "";
+    });
+  }
+  // reset visuel
+  document.querySelectorAll("#drinkGrid .pill").forEach((b) => {
+    b.classList.remove("active");
+    b.setAttribute("aria-pressed", "false");
+    b.disabled = false;
+    b.style.pointerEvents = "auto";
+  });
+  // vide les sous-menus
+  ["hotOpts", "softOpts", "alcoOpts"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = "";
+  });
+
+  //  remise  zro sre des familles + focus: montrer Hot/Soft/Alcohol
+  drinkSel.cat = "";
+  drinkSel.sub = "";
+  if (typeof showAllDrinkGroups === "function") showAllDrinkGroups(); //  affiche les 3 cartes
+
+  if (typeof updateServeDrinkButtons === "function") updateServeDrinkButtons();
+  applyDrinkEmojis(document.getElementById("drinkGrid"));
+}
+
+// Listeners catgorie (//)   attacher quand la modale souvre
+function initDrinkGrid() {
+  // reset visuel
+  document.querySelectorAll("#drinkGrid .pill.big").forEach((x) => {
+    x.classList.remove("active");
+    x.setAttribute("aria-pressed", "false");
+  });
+  ["hotOpts", "softOpts", "alcoOpts"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = "";
+  });
+  // reset state
+  Object.keys(drinkSel).forEach((k) => {
+    drinkSel[k] = typeof drinkSel[k] === "boolean" ? false : "";
+  });
+  // montre les 3 familles et MAJ des boutons "Serve"
+  if (typeof showAllDrinkGroups === "function") showAllDrinkGroups();
+  if (typeof updateServeDrinkButtons === "function") updateServeDrinkButtons();
+
+  applyDrinkEmojis(document.getElementById("drinkGrid"));
+}
+
+function setActive(btn, scopeSel) {
+  document.querySelectorAll(scopeSel).forEach((x) => {
+    x.classList.remove("active");
+    x.setAttribute("aria-pressed", "false");
+  });
+  btn.classList.add("active");
+  btn.setAttribute("aria-pressed", "true");
+}
+
+function updateServeDrinkButtons() {
+  const btnAp = document.getElementById("serveAperitif");
+  const btnTC = document.getElementById("serveTC");
+  const btnMeal = document.getElementById("serveMealDrink");
+  const phase = store.phase;
+
+  // 1er niveau OK sans dtail
+  const L1_OK = new Set([
+    "cafe",
+    "deca",
+    "chocolat",
+    "sprite",
+    "tonic",
+    "champagne",
+  ]);
+
+  let ok = false;
+
+  if (drinkSel.cat && drinkSel.sub) {
+    if (L1_OK.has(drinkSel.sub)) {
+      // caf / dca / caotina / sprite / tonic / champagne
+      ok = true;
+    } else {
+      // 2e niveau obligatoire
+      const need = {
+        the: "theType",
+        eau: "waterType",
+        coca: "cocaType",
+        jus: "juiceType",
+        biere: "beer",
+        vin_rouge: "vinRouge",
+        vin_blanc: "vinBlanc",
+        digestif: "digestif",
+        cocktail: "cocktail",
+      }[drinkSel.sub];
+
+      ok = need ? !!drinkSel[need] : false;
+    }
+  }
+
+  // Dsactive tout, puis n'active que le bouton de la phase
+  [btnAp, btnTC, btnMeal].forEach((b) => {
+    if (b) b.disabled = true;
+  });
+  if (phase === "aperitif" && btnAp) btnAp.disabled = !ok;
+  if (phase === "tc" && btnTC) btnTC.disabled = !ok;
+  if (phase === "repas" && btnMeal) btnMeal.disabled = !ok;
+}
+
+// --- Helper : ractive toutes les pills du drink grid ---
+function reactivateDrinkGrid() {
+  const grid = document.getElementById("drinkGrid");
+  if (!grid) return;
+  grid.querySelectorAll(".pill").forEach((b) => {
+    // enlve toute dsactivation rsiduelle
+    b.disabled = false;
+    b.style.pointerEvents = "";
+    b.style.opacity = "";
+  });
+}
+
+// --- Helper : assure que la drink grid est interactive si la modale est ouverte
 function ensureDrinkGridActive() {
   const mb = document.getElementById("modalBack");
   const modalOpen =
     !!mb && (mb.style.display === "flex" || mb.style.display === "");
   if (!modalOpen) return;
-  const grid = document.getElementById("drinkGrid");
-  if (!grid) return;
+  if (!document.getElementById("drinkGrid")) return;
+
+  // Remet daplomb la grille et ses listeners (idempotent)
   try {
-    initializeDrinkMenu();
-    initDrinkGrid();
-    reactivateDrinkGrid();
-    showAllDrinkGroups();
-    updateServeDrinkButtons();
+    reactivateDrinkGrid?.();
+    initDrinkGrid?.();
+    renderDrinkSub?.(); // no-op dans v14+, garde compat
+    renderDrinkOpts?.(); // no-op dans v14+, garde compat
+    showAllDrinkGroups?.();
+    updateServeDrinkButtons?.();
   } catch (e) {
     console.warn("ensureDrinkGridActive:", e);
   }
 }
 
+//  Met  jour le libell du bouton boisson selon la phase
 function updateServeDrinkLabel() {
   const btn = document.getElementById("serveTC");
   if (!btn) return;
@@ -624,13 +1713,64 @@ function updateServeDrinkLabel() {
       : L.serveTC || "Serve tea & coffee";
 }
 
-function getCocktailTip(code) {
-  const tips = (window.COCKTAIL_TIPS || {})[store.config.lang || "EN"] || {};
-  const arr = tips[code] || [];
-  return `<div class="tip-list">${arr
-    .map((l) => `<div>${l}</div>`)
-    .join("")}</div>`;
-}
+// === [AJOUT] Pilotage des sous-menus boissons (2 tages) ===
+(function initDrinkMenus() {
+  const $ = (id) => document.getElementById(id);
+  const show = (id, on) => {
+    const el = $(id);
+    if (el) el.style.display = on ? "" : "none";
+  };
+
+  function showGroup(g) {
+    show("tc_soft", g === "soft");
+    show("tc_alcool", g === "alcool");
+    show("tc_chaud", g === "chaud");
+    [
+      "tc_biere",
+      "tc_vin",
+      "tc_champagne",
+      "tc_digestif",
+      "tc_cocktail",
+    ].forEach((x) => show(x, false));
+  }
+
+  function showAlcoholSub(kind) {
+    [
+      "tc_biere",
+      "tc_vin",
+      "tc_champagne",
+      "tc_digestif",
+      "tc_cocktail",
+    ].forEach((x) => show(x, false));
+
+    //  Toujours cacher le (i) et la bulle quand on change de sous-menu
+    const btn = document.getElementById("tc_tipBtn");
+    const tip = document.getElementById("tc_tip");
+    if (btn) btn.style.display = "none";
+    if (tip) tip.style.display = "none";
+
+    if (kind) show("tc_" + kind, true);
+  }
+
+  const g = $("tc_group");
+  if (g)
+    g.addEventListener("change", () => {
+      showGroup(g.value);
+      updateServeDrinkButtons();
+    });
+
+  const a = $("tc_alcool_type");
+  if (a)
+    a.addEventListener("change", () => {
+      showAlcoholSub(a.value);
+      updateServeDrinkButtons();
+    });
+
+  // init si quelque chose tait dj slectionn
+  showGroup(g?.value || "");
+  showAlcoholSub(a?.value || "");
+  applyDrinkEmojis(document.getElementById("drinkGrid"));
+})();
 
 function nowStr() {
   return new Date().toLocaleTimeString([], {
@@ -1488,7 +2628,7 @@ function ensureLegalBanner() {
 
     // Texte statique + span traduisible
     div.innerHTML =
-      ' 2025 © Nicolas Debesse | DEBN | 47762  <span id="legalRights"></span>';
+      ' 2025 � Nicolas Debesse | DEBN | 47762  <span id="legalRights"></span>';
 
     document.body.appendChild(div);
   }
@@ -1507,10 +2647,6 @@ function applyI18n() {
   const cv = document.getElementById("clientView");
   if (cv) {
     cv.textContent = store.clientView ? " " + L.crew : " " + L.client;
-  }
-  const flightInput = document.getElementById("flightNo") as HTMLInputElement;
-  if (flightInput) {
-    flightInput.placeholder = L.flightPlaceholder || "e.g. LX2810";
   }
 
   // Bindings srs (vite undefined is not iterable)
@@ -1794,7 +2930,7 @@ function applyI18n() {
 
     // Rapplique les tats dpendants
     tc_updateSoftUI?.();
-    updateServeDrinkButtons();
+    updateServeDrinkButtons?.();
     // Si une modale sige est ouverte au moment du changement de langue,
     // on la rouvre proprement pour rinitialiser entirement la grille boissons.
     try {
@@ -1816,11 +2952,22 @@ function applyI18n() {
       !!mb && (mb.style.display === "flex" || mb.style.display === "");
     if (modalOpen && document.getElementById("drinkGrid")) {
       // Remet daplomb la grille et ses listeners (nouvelle UI unifie)
-      initializeDrinkMenu();
-      initDrinkGrid();
-      reactivateDrinkGrid();
-      showAllDrinkGroups();
-      updateServeDrinkButtons();
+      reactivateDrinkGrid?.();
+      initDrinkGrid?.();
+      // Repeuple les sous-lignes/options si ces helpers existent
+      renderDrinkSub?.();
+      renderDrinkOpts?.();
+      // Montre tous les groupes (vite un tat filtr persistant)
+      showAllDrinkGroups?.();
+
+      // Scurit : r-active linteraction sur toutes les pills
+      document.querySelectorAll("#drinkGrid .pill").forEach((b) => {
+        b.disabled = false;
+        b.style.pointerEvents = "auto";
+      });
+
+      // Met  jour ltat des boutons "Servir"
+      updateServeDrinkButtons?.();
 
       // Rafrachit lhorodateur inline si on a une seat courante
       if (typeof modalSeat !== "undefined" && modalSeat) {
@@ -1894,7 +3041,6 @@ function renderSeatCell(r, col) {
   d.className = "seat bus";
   if (seat.occupied) d.classList.add("occupied");
   if (seat.sleep) d.classList.add("sleeping");
-  const L = I18N[store.config.lang || "EN"] || I18N.EN;
   const mini = document.createElement("div");
   mini.className = "mini";
   const dot = document.createElement("div");
@@ -1945,10 +3091,16 @@ function renderSeatCell(r, col) {
   const ib = document.createElement("div");
   ib.className = "iconbar";
   if (seat.type === "infant") {
-    appendSeatIcon(ib, SEAT_ICONS.infant, L.lgInfant || L.mdInfant || "Infant");
+    const e = document.createElement("div");
+    e.className = "icon";
+    e.textContent = "";
+    ib.appendChild(e);
   }
   if (seat.type === "child") {
-    appendSeatIcon(ib, SEAT_ICONS.child, L.lgChild || L.mdChild || "Child");
+    const e = document.createElement("div");
+    e.className = "icon";
+    e.textContent = "";
+    ib.appendChild(e);
   }
   if (
     seat?.served &&
@@ -1956,34 +3108,30 @@ function renderSeatCell(r, col) {
     seat.served.trayUsed &&
     !seat.served.trayCleared
   ) {
-    appendSeatIcon(
-      ib,
-      SEAT_ICONS.mealPending,
-      L.lgServed || L.clearTray || "Served"
-    );
+    const e = document.createElement("div");
+    e.className = "icon";
+    e.textContent = "";
+    ib.appendChild(e);
   }
 
   if (seat?.served && seat.served.trayCleared) {
-    appendSeatIcon(
-      ib,
-      SEAT_ICONS.trayCleared,
-      L.lgclear || L.undoClearTray || "Cleared"
-    );
+    const e = document.createElement("div");
+    e.className = "icon";
+    e.textContent = "";
+    ib.appendChild(e);
   }
 
   if (seat.sleep) {
-    appendSeatIcon(
-      ib,
-      SEAT_ICONS.sleep,
-      L.lgSleep || L.mdSleepTxt || "Sleeping"
-    );
+    const e = document.createElement("div");
+    e.className = "icon";
+    e.textContent = "";
+    ib.appendChild(e);
   }
   if (seat.serveLaterAt) {
-    appendSeatIcon(
-      ib,
-      SEAT_ICONS.later,
-      L.lgLater || L.mdLater || "Serve later"
-    );
+    const e = document.createElement("div");
+    e.className = "icon";
+    e.textContent = "";
+    ib.appendChild(e);
   }
   d.appendChild(ib);
 
@@ -2260,38 +3408,11 @@ function refreshBadges() {
       el.classList.add(val <= 0 ? "zero" : val <= 2 ? "low" : "ok");
     }
   };
-  const toggleElems = (
-    elems: Array<HTMLElement | null | undefined>,
-    show: boolean
-  ) => {
-    elems.forEach((el) => {
-      if (el) el.style.display = show ? "" : "none";
-    });
-  };
   setBadge("plateaux", store.inventory.plateaux);
   setBadge("hot_viande", store.inventory.hot_viande);
   setBadge("hot_vege", store.inventory.hot_vege);
   setBadge("hot_special", store.inventory.hot_special);
-  const preSum = sumPRE();
-  setBadge("hot_pre", preSum);
-  toggleElems(
-    [
-      document.getElementById("lblInvSpecial"),
-      (document.querySelector('[data-badge="hot_special"]')
-        ?.parentElement as HTMLElement) || null,
-      document.getElementById("spmlInv"),
-    ],
-    (store.inventory.hot_special || 0) > 0
-  );
-  toggleElems(
-    [
-      document.getElementById("preHeader"),
-      (document.querySelector('[data-badge="hot_pre"]')
-        ?.parentElement as HTMLElement) || null,
-      document.getElementById("preInv"),
-    ],
-    preSum > 0
-  );
+  setBadge("hot_pre", sumPRE());
   const bPre = document.querySelector('[data-badge="hot_pre"]');
   if (bPre) {
     bPre.title =
@@ -2307,7 +3428,7 @@ function refreshBadges() {
   if (!addSel) return;
   const prevVal = addSel?.value || "";
   const addTxt =
-    lang === "FR" ? "Choisir" : lang === "DE" ? "Wählen" : "Choose";
+    lang === "FR" ? "Choisir" : lang === "DE" ? "W�hlen" : "Choose";
   addSel.innerHTML = `<option value="">${addTxt}</option>`;
   // (pas de refocus ici)
 
@@ -2697,71 +3818,120 @@ function focusAdjacentSeat(step) {
 }
 
 function buildPassengerCarousel() {
+  const carousel = document.getElementById("passengerCarousel");
+  if (!carousel || !modalSeat) return;
+
+  const current = parseSeatKeyParts(modalSeat.key);
   const seats = store.seats || {};
-  const colPriority = ["A", "B", "C", "D", "E", "F"];
   const items = [];
 
-  for (const key of Object.keys(seats)) {
-    const parts = parseSeatKeyParts(key);
-    if (!parts) continue;
-    const seatData = seats[key] || {};
-    if (!seatData.occupied) continue;
-    items.push({ key, parts });
+  if (current) {
+    for (const key of Object.keys(seats)) {
+      const parts = parseSeatKeyParts(key);
+      if (!parts) continue;
+      if (Math.abs(parts.row - current.row) > 1) continue;
+      const seatData = seats[key];
+      if (!seatData && key !== modalSeat.key) continue;
+      if (!seatData?.occupied && key !== modalSeat.key) continue;
+      items.push({ key, parts, data: seatData || {} });
+    }
+    if (!items.some((item) => item.key === modalSeat.key)) {
+      items.push({ key: modalSeat.key, parts: current, data: modalSeat.data });
+    }
   }
 
   items.sort((a, b) => {
     if (a.parts.row === b.parts.row) {
-      const aIdx = colPriority.indexOf(a.parts.col);
-      const bIdx = colPriority.indexOf(b.parts.col);
-      if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
-      if (aIdx !== -1) return -1;
-      if (bIdx !== -1) return 1;
       return a.parts.col.localeCompare(b.parts.col);
     }
-    return a.parts.row - b.parts.row;
+    return b.parts.row - a.parts.row;
   });
 
   passengerCarouselOrder = items.map((item) => item.key);
+  carousel.innerHTML = "";
 
-  const currentKey = modalSeat?.key || "";
-  const nav = document.getElementById("seatNav");
-  const prevBtn = document.getElementById(
-    "seatNavPrev"
-  ) as HTMLButtonElement | null;
-  const nextBtn = document.getElementById(
-    "seatNavNext"
-  ) as HTMLButtonElement | null;
-  const currentLabel = document.getElementById("seatNavCurrent");
+  if (!items.length) {
+    carousel.setAttribute("data-empty", "true");
+    return;
+  }
 
-  if (currentLabel) currentLabel.textContent = currentKey || "--";
+  carousel.removeAttribute("data-empty");
 
-  const idx = passengerCarouselOrder.indexOf(currentKey);
-  const hasPrev = idx > 0;
-  const hasNext = idx !== -1 && idx < passengerCarouselOrder.length - 1;
-
-  if (nav) {
-    nav.setAttribute(
-      "data-empty",
-      passengerCarouselOrder.length ? "false" : "true"
+  for (const item of items) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "passenger-pill";
+    btn.tabIndex = 0;
+    btn.setAttribute("role", "option");
+    btn.setAttribute("data-seat", item.key);
+    btn.setAttribute(
+      "aria-selected",
+      item.key === modalSeat.key ? "true" : "false"
     );
+    if (!item.data?.occupied) btn.classList.add("is-empty");
+    if (item.data?.served?.meal) btn.classList.add("is-served");
+
+    const dot = document.createElement("span");
+    dot.className = "status-dot";
+    const status = (item.data?.status || "").toUpperCase();
+    if (status === "FTL") dot.classList.add("ftl");
+    else if (status === "SEN") dot.classList.add("sen");
+    else if (status === "HON") dot.classList.add("hon");
+    else if (status === "VIP") dot.classList.add("vip");
+    else if (status === "FCL") dot.classList.add("fcl");
+    else if (status === "PAD") dot.classList.add("pad");
+    btn.appendChild(dot);
+
+    const label = document.createElement("span");
+    label.className = "passenger-label";
+    label.textContent = item.key;
+    btn.appendChild(label);
+
+    addClickAndTouchListener(btn, () => {
+      if (item.key === modalSeat.key) return;
+      focusSeatByKey(item.key);
+    });
+
+    btn.addEventListener("keydown", (evt) => {
+      const key = evt.key;
+      if (key === "Enter" || key === " ") {
+        evt.preventDefault();
+        if (item.key !== modalSeat.key) focusSeatByKey(item.key);
+        return;
+      }
+      if (key === "ArrowLeft" || key === "ArrowRight") {
+        evt.preventDefault();
+        const idx = passengerCarouselOrder.indexOf(item.key);
+        const targetIdx = idx + (key === "ArrowLeft" ? -1 : 1);
+        const targetKey = passengerCarouselOrder[targetIdx];
+        if (!targetKey) return;
+        const targetBtn = carousel.querySelector(
+          `[data-seat='${targetKey}']`
+        ) as HTMLElement | null;
+        targetBtn?.focus();
+      }
+    });
+
+    carousel.appendChild(btn);
   }
 
-  if (prevBtn) {
-    prevBtn.disabled = !hasPrev;
-    prevBtn.setAttribute("aria-disabled", (!hasPrev).toString());
-    prevBtn.onclick = () => focusAdjacentSeat(-1);
-  }
-
-  if (nextBtn) {
-    nextBtn.disabled = !hasNext;
-    nextBtn.setAttribute("aria-disabled", (!hasNext).toString());
-    nextBtn.onclick = () => focusAdjacentSeat(1);
+  const active = carousel.querySelector(
+    '[aria-selected="true"]'
+  ) as HTMLElement | null;
+  if (active && typeof active.scrollIntoView === "function") {
+    try {
+      active.scrollIntoView({ inline: "center", block: "nearest" });
+    } catch (_) {
+      // ignore scroll issues on legacy browsers
+    }
   }
 }
 
 function mealOptionLabel(type, L) {
-  if (type === "viande") return L.optNormalMeat || "Option 1";
-  if (type === "vege") return L.optNormalVeg || "Option 2";
+  if (type === "viande")
+    return store.menu?.viandeLabel || L.optNormalMeat || "Option 1";
+  if (type === "vege")
+    return store.menu?.vegeLabel || L.optNormalVeg || "Option 2";
   if (type === "plateau") return L.optNormalTray || "Tray (no casserole)";
   return type || "";
 }
@@ -3022,7 +4192,7 @@ function openSeatModal(row, col) {
   }
   updateSleepButtons();
 
-  $("#modalTitle").textContent = I18N[store.config.lang || "EN"].seat;
+  $("#modalTitle").textContent = I18N[store.config.lang || "EN"].seat + " " + k;
   populateModalOptions();
   buildPassengerCarousel();
   $("#m_status").value = modalSeat.data.status;
@@ -3223,13 +4393,8 @@ function openSeatModal(row, col) {
     const leftCol = document.querySelector(".two > div:first-child");
     const rightCol = document.getElementById("rightCol");
     const meal = document.getElementById("mealBlock");
-    const mealContent = meal?.querySelector(".modal-card__content");
     const tc = document.getElementById("tcBlock");
-    const aperoBlock = document.getElementById("aperoBlock");
-    const tcServeBlock = document.getElementById("tcServeBlock");
     let rightNotes = document.getElementById("rightNotes");
-    ensureNotesAccordions();
-    syncNoteAccordionsByPhase(phase);
     if (!rightNotes) {
       rightNotes = document.createElement("div");
       rightNotes.id = "rightNotes";
@@ -3245,22 +4410,6 @@ function openSeatModal(row, col) {
       if (apNotes && apNotes.parentElement !== tc) tc.appendChild(apNotes);
       if (tcNotes && tcNotes.parentElement !== tc) tc.appendChild(tcNotes);
     }
-    if (aperoBlock && aperoBlock.parentElement !== tc)
-      tc?.appendChild(aperoBlock);
-    if (tcServeBlock && tcServeBlock.parentElement !== tc)
-      tc?.appendChild(tcServeBlock);
-    const mdn = document.getElementById("mealDrinkNotesBlock");
-    const serveRow = document.getElementById("mealDrinkServeRow");
-    if (mealContent) {
-      if (mdn && mdn.parentElement !== mealContent)
-        mealContent.appendChild(mdn);
-      if (serveRow && serveRow.parentElement !== mealContent)
-        mealContent.appendChild(serveRow);
-    }
-    if (mdn) mdn.style.display = "none";
-    if (serveRow) serveRow.style.display = "none";
-    if (aperoBlock) aperoBlock.style.display = "none";
-    if (tcServeBlock) tcServeBlock.style.display = "none";
     if (meal && meal.parentElement !== rightCol) rightCol?.appendChild(meal);
     if (tc && tc.parentElement !== rightCol) rightCol?.appendChild(tc);
     if (rightNotes) {
@@ -3313,11 +4462,6 @@ function openSeatModal(row, col) {
           if (lblAp)
             lblAp.textContent = L.mdAperoNotes || "Drink / aperitif notes";
         }
-        if (aperoBlock) {
-          aperoBlock.style.display = "flex";
-          rightNotes?.appendChild(aperoBlock);
-          if (rightNotes) rightNotes.style.display = "block";
-        }
         // titre = Apritif
         const title = document.getElementById("tcTitle");
         if (title) title.textContent = L.tcTitle || "Aperitif";
@@ -3346,11 +4490,6 @@ function openSeatModal(row, col) {
           rightNotes?.appendChild(tcNotes); // notes  droite
           if (rightNotes) rightNotes.style.display = "block";
         }
-        if (tcServeBlock) {
-          tcServeBlock.style.display = "flex";
-          rightNotes?.appendChild(tcServeBlock);
-          if (rightNotes) rightNotes.style.display = "block";
-        }
         // titre = Th & Caf
         const title = document.getElementById("tcTitle");
         if (title) title.textContent = L.chips_tc || "Tea & Coffee";
@@ -3364,12 +4503,19 @@ function openSeatModal(row, col) {
 
     if (phase === "repas") {
       // REPAS :
-      // - gauche : boissons (tcBlock + notes + boutons)
-      // - droite : MEAL uniquement
+      // - gauche : MEAL uniquement
+      // - droite : tcBlock + boutons "Serve drink"
       if (modal) modal.classList.remove("mono");
 
-      if (tc && leftCol) {
-        leftCol.appendChild(tc);
+      // Gauche = MEAL uniquement
+      if (meal && leftCol) {
+        meal.style.display = "block";
+        leftCol.appendChild(meal);
+      }
+
+      // Droite = Liste boissons + boutons de service
+      if (tc && rightCol) {
+        rightCol.appendChild(tc);
         tc.style.display = "block";
 
         // Masquer notes apro/TC, mais AFFICHER les notes "meal drink"
@@ -3378,30 +4524,25 @@ function openSeatModal(row, col) {
         if (apNotes) apNotes.style.display = "none";
         if (tcNotes) tcNotes.style.display = "none";
 
-        // >>> AFFICHER + DPLACER le bloc notes Meal Drink sous le bloc repas
+        // >>> AFFICHER + DPLACER le bloc notes Meal Drink sous la liste boisson
         const mdn = document.getElementById("mealDrinkNotesBlock");
-        if (mdn) {
+        if (mdn && rightCol) {
           mdn.style.display = "block";
-          if (mealContent) mealContent.appendChild(mdn);
+          rightCol.appendChild(mdn); // le place juste sous tcBlock
           const lbl = document.getElementById("mdMealDrinkNotes");
           if (lbl) lbl.textContent = L.mealDrinkNotes || "Meal drink notes";
         }
 
         // Boutons Serve drink / Rien / horodateur (aprs les notes)
         const serveRow = document.getElementById("mealDrinkServeRow");
-        if (serveRow) {
+        if (serveRow && rightCol) {
           serveRow.style.display = "flex";
-          if (mealContent) mealContent.appendChild(serveRow);
+          rightCol.appendChild(serveRow);
         }
 
-        // Titre ct gauche
+        // Titre ct droit
         const title = document.getElementById("tcTitle");
         if (title) title.textContent = L.mealDrinkTitle || "Meal drinks";
-      }
-
-      if (meal && rightCol) {
-        meal.style.display = "block";
-        rightCol.appendChild(meal);
       }
       // (NOUVEAU) En mode repas, on ractive aussi la grille boissons
       if (document.getElementById("drinkGrid")) {
@@ -3413,12 +4554,12 @@ function openSeatModal(row, col) {
         });
       }
 
-      //  gauche on ne montre QUE le bloc boissons
+      //  gauche on ne montre QUE le bloc Meal (pas Passenger)
       reactivateDrinkGrid();
       updateServeDrinkButtons();
-      initDrinkGrid(); //  AJOUT
+      initDrinkGrid?.(); //  AJOUT
       ensureDrinkGridActive();
-      showOnlyLeft("tcBlock");
+      showOnlyLeft("mealBlock");
       return;
     }
 
@@ -3961,19 +5102,23 @@ function updateSleepButtons() {
   const active = chk
     ? chk.checked
     : !!(modalSeat && modalSeat.data && modalSeat.data.sleep);
-  const L = I18N[store.config.lang || "EN"] || I18N.EN;
-  const sleepLabel = L.mdSleepTxt || "Sleep";
-  SLEEP_BUTTON_IDS.forEach((id) => {
-    const btn = document.getElementById(id) as HTMLButtonElement | null;
-    if (!btn) return;
-    btn.textContent = SEAT_ICONS.sleep;
-    btn.title = sleepLabel;
-    btn.setAttribute("aria-label", sleepLabel);
+  ["sleepModalBtn"].forEach((id) => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      if (active) btn.classList.add("active");
+      else btn.classList.remove("active");
+    }
+    // Maintient le tooltip dans la bonne langue
+    {
+      const L = I18N[store.config.lang || "EN"] || I18N.EN;
+      ["sleepMealBtn", "sleepAperoBtn", "sleepTCBtn", "sleepModalBtn"].forEach(
+        (id) => {
+          const btn = document.getElementById(id);
+          if (btn) btn.title = L.mdSleepTxt || "Sleep";
+        }
+      );
+    }
   });
-  const modalBtn = document.getElementById("sleepModalBtn");
-  if (modalBtn) {
-    modalBtn.classList.toggle("active", !!active);
-  }
 }
 
 function setMoveUI(on) {
@@ -4176,8 +5321,7 @@ function summarizeApDrink(ap, L, lang) {
       if (ap.theType === "english") P.push(L.tcTeaEnglish);
       else if (ap.theType === "vert") P.push(L.tcTeaVert);
       else if (ap.theType === "menthe") P.push(L.tcTeaMenthe);
-      else if (ap.theType === "camomille")
-        P.push(L.tcTeaCamomille || L.tcInfCam);
+      else if (ap.theType === "camomille") P.push(L.tcTeaCamomille || L.tcInfCam);
       if (ap.milk) {
         const m = milkLabel(ap.milk);
         if (m) P.push(m);
@@ -4404,7 +5548,7 @@ document.getElementById("serveAperitif")?.addEventListener("click", () => {
   save();
   resetDrinkUI(true);
   reactivateDrinkGrid();
-  initDrinkGrid();
+  initDrinkGrid?.();
   updateServeDrinkButtons();
   openSeatModal(modalSeat.row, modalSeat.col);
   renderSeatmap();
@@ -4474,7 +5618,7 @@ document.getElementById("serveTC")?.addEventListener("click", () => {
   }
   resetDrinkUI(true);
   reactivateDrinkGrid();
-  initDrinkGrid();
+  initDrinkGrid?.();
   updateServeDrinkButtons();
   openSeatModal(modalSeat.row, modalSeat.col);
   renderSeatmap();
@@ -4498,7 +5642,7 @@ document.getElementById("serveAperitifNone")?.addEventListener("click", () => {
   save();
   resetDrinkUI(true);
   reactivateDrinkGrid();
-  initDrinkGrid();
+  initDrinkGrid?.();
   openSeatModal(modalSeat.row, modalSeat.col);
   renderSeatmap();
   renderServiceFlow();
@@ -4521,7 +5665,7 @@ document.getElementById("serveTCNone")?.addEventListener("click", () => {
   save();
   resetDrinkUI(true);
   reactivateDrinkGrid();
-  initDrinkGrid();
+  initDrinkGrid?.();
   updateServeDrinkButtons();
   openSeatModal(modalSeat.row, modalSeat.col);
   renderSeatmap();
@@ -4590,7 +5734,7 @@ function reopenSameSeat() {
   resetDrinkUI(true);
   updateServeDrinkButtons();
   reactivateDrinkGrid();
-  initDrinkGrid();
+  initDrinkGrid?.();
   openSeatModal(modalSeat.row, modalSeat.col);
   renderSeatmap();
   renderServiceFlow();
@@ -4614,9 +5758,9 @@ function reopenSameSeat() {
     updateServeDrinkLabel?.(); // garde les libells  jour si besoin (repas/boisson)
     resetDrinkUI(true);
     reopenSameSeat(); // rouvre la mme fiche dans le nouveau mode
-    ensureDrinkGridActive();
+    +ensureDrinkGridActive();
     reactivateDrinkGrid(); //  AJOUT aprs
-    initDrinkGrid(); //  AJOUT aprs
+    initDrinkGrid?.(); //  AJOUT aprs
     // (nouveau) MAJ horodateur inline aprs changement de phase
     if (modalSeat) {
       if (store.phase === "tc") updateTCInline(modalSeat.key);
@@ -4624,7 +5768,7 @@ function reopenSameSeat() {
     }
   });
   reactivateDrinkGrid();
-  initDrinkGrid();
+  initDrinkGrid?.();
   document.querySelectorAll("#drinkGrid .pill").forEach((b) => {
     b.disabled = false;
     b.style.pointerEvents = "auto";
@@ -4794,7 +5938,7 @@ document.getElementById("clearTrayBtn")?.addEventListener("click", () => {
   refreshBadges();
   resetDrinkUI(true);
   reactivateDrinkGrid();
-  initDrinkGrid();
+  initDrinkGrid?.();
   openSeatModal(modalSeat.row, modalSeat.col);
   renderSeatmap();
   renderServiceFlow();
@@ -4821,7 +5965,7 @@ document.getElementById("serveMealNone")?.addEventListener("click", () => {
   save();
   resetDrinkUI(true);
   reactivateDrinkGrid();
-  initDrinkGrid();
+  initDrinkGrid?.();
   openSeatModal(modalSeat.row, modalSeat.col);
   renderSeatmap();
   renderServiceFlow();
@@ -4929,7 +6073,7 @@ $("#serveMeal").addEventListener("click", () => {
   save();
   resetDrinkUI(true);
   reactivateDrinkGrid();
-  initDrinkGrid();
+  initDrinkGrid?.();
   openSeatModal(modalSeat.row, modalSeat.col);
   renderSeatmap();
   renderServiceFlow();
@@ -5726,8 +6870,8 @@ function applyTheme() {
   document.body.classList.toggle("theme-light", !dark);
   const tBtn = document.getElementById("themeToggle");
   if (tBtn) {
-    const label = dark ? "Light mode" : "Dark mode";
-    tBtn.textContent = dark ? "☀️" : "🌙";
+    const label = dark ? "Dark mode" : "Light mode";
+    tBtn.textContent = dark ? "??" : "??";
     tBtn.setAttribute("aria-label", label);
     tBtn.title = label;
   }
@@ -6457,7 +7601,7 @@ function _showTipButton(val) {
     _fillTip(val);
 
     // (3) Conduite existante : re-calcul du bouton "Servir"
-    updateServeDrinkButtons();
+    updateServeDrinkButtons?.();
     tc_save?.();
   });
 
@@ -6671,10 +7815,11 @@ export function initFlightFormsLegacy(): void {
 }
 
 export function initMealSectionLegacy(): void {
-  initializeDrinkMenu();
-  initDrinkGrid();
-  reactivateDrinkGrid();
-  updateServeDrinkButtons();
+  bindDrinkGrid?.();
+  initPillCaptions?.();
+  initDrinkMenus?.();
+  replaceCocktailChangeHandler?.();
+  setBigDrinkCaps?.();
 
   const mealBlock = document.getElementById("mealBlock");
   if (mealBlock && !mealBlock.dataset.touchReady) {
@@ -6722,3 +7867,4 @@ export {
   sumPRE,
   rightCols,
 };
+

@@ -149,8 +149,6 @@ export const I18N = {
         lgInfant: "👶 Infant",
         lgChild: "🧒 Child",
         lgTogether: "🤝 Eat together",
-        legendShow: "Show legend",
-        legendHide: "Hide legend",
         // =========================
         // ALERTS / MESSAGES
         // =========================
@@ -464,8 +462,6 @@ export const I18N = {
         lgInfant: "👶 Bébé",
         lgChild: "🧒 Enfant",
         lgTogether: "🤝 Manger ensemble",
-        legendShow: "Afficher la légende",
-        legendHide: "Masquer la légende",
         // =========================
         // ALERTES / MESSAGES
         // =========================
@@ -770,8 +766,6 @@ export const I18N = {
         lgInfant: "👶 Säugling",
         lgChild: "🧒 Kind",
         lgTogether: "🤝 Zusammen essen",
-        legendShow: "Legende anzeigen",
-        legendHide: "Legende ausblenden",
         // =========================
         // ALARME / MELDUNGEN
         // =========================
