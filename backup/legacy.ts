@@ -1471,6 +1471,10 @@ function applyI18n() {
   if (cv) {
     cv.textContent = store.clientView ? " " + L.crew : " " + L.client;
   }
+  const flightInput = document.getElementById("flightNo") as HTMLInputElement;
+  if (flightInput) {
+    flightInput.placeholder = L.flightPlaceholder || "e.g. LX2810";
+  }
 
   // Bindings srs (vite undefined is not iterable)
   if (
@@ -2219,11 +2223,38 @@ function refreshBadges() {
       el.classList.add(val <= 0 ? "zero" : val <= 2 ? "low" : "ok");
     }
   };
+  const toggleElems = (
+    elems: Array<HTMLElement | null | undefined>,
+    show: boolean
+  ) => {
+    elems.forEach((el) => {
+      if (el) el.style.display = show ? "" : "none";
+    });
+  };
   setBadge("plateaux", store.inventory.plateaux);
   setBadge("hot_viande", store.inventory.hot_viande);
   setBadge("hot_vege", store.inventory.hot_vege);
   setBadge("hot_special", store.inventory.hot_special);
-  setBadge("hot_pre", sumPRE());
+  const preSum = sumPRE();
+  setBadge("hot_pre", preSum);
+  toggleElems(
+    [
+      document.getElementById("lblInvSpecial"),
+      (document.querySelector('[data-badge="hot_special"]')?.parentElement as HTMLElement) ||
+        null,
+      document.getElementById("spmlInv"),
+    ],
+    (store.inventory.hot_special || 0) > 0
+  );
+  toggleElems(
+    [
+      document.getElementById("preHeader"),
+      (document.querySelector('[data-badge="hot_pre"]')?.parentElement as HTMLElement) ||
+        null,
+      document.getElementById("preInv"),
+    ],
+    preSum > 0
+  );
   const bPre = document.querySelector('[data-badge="hot_pre"]');
   if (bPre) {
     bPre.title =
