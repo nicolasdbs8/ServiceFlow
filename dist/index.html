@@ -15,11 +15,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ServiceFlow">
 
-<title>SWISS ServiceFlow  Seatmap & Service  v.1.0</title>
+<title>SWISS ServiceFlow v.1.0</title>
 
 
-  <script type="module" crossorigin src="/assets/index-4IfYjneI.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-Bkr7NFGR.css">
+  <script type="module" crossorigin src="/assets/index-EZ0jt20P.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CrYDJThg.css">
 </head>
 <body class="theme-dark">
 <header>
@@ -286,11 +286,17 @@
 <div id="histControls" class="row" style="gap:8px;margin:6px 0 8px 0;align-items:center">
   <label class="pill" id="histLbl">Affichage</label>
 
-  <select id="histMode" title="Filtrer l'historique">
-    <option value="all">Tous les vnements</option>
-    <option value="seat">Par sige</option>
-    <option value="type">Par type</option>
-  </select>
+  <div class="row hist-mode-switch" role="group" aria-labelledby="histLbl">
+    <button class="btn" id="histModeAll" data-mode="all" aria-pressed="true">
+      Tous les vnements
+    </button>
+    <button class="btn" id="histModeSeat" data-mode="seat" aria-pressed="false">
+      Par sige
+    </button>
+    <button class="btn" id="histModeType" data-mode="type" aria-pressed="false">
+      Par type
+    </button>
+  </div>
 
  <span id="histSeatWrap" class="row" style="gap:6px;display:none">
   <label class="pill" id="histLblSeat">Sige</label>

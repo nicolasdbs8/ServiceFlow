@@ -205,14 +205,7 @@ const DRINK_TREE: DrinkCategory[] = [
         labelKey: "drink_caotina",
         fallback: "Caotina",
         resetKeys: [],
-        sections: [
-          {
-            id: "chocoInfo",
-            kind: "info",
-            titleKey: "tcCatChoco",
-            fallback: "Caotina",
-          },
-        ],
+        sections: [],
       },
     },
   },
@@ -725,6 +718,11 @@ function renderSubOptions(cat: string, sub: string) {
   const subsection = SUBSECTION_MAP.get(subKey);
   if (!subsection) {
     container.innerHTML = "";
+    return;
+  }
+  if (!subsection.sections.length) {
+    container.innerHTML = "";
+    currentSubKey = subKey;
     return;
   }
 

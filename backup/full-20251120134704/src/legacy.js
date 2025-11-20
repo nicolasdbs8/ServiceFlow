@@ -1330,9 +1330,9 @@ const I18N_BINDINGS = [
     ["histLblType", "histLblType"],
     ["histAscLbl", "histAscLbl"],
     ["#histType option[value='mealDrinkServed']", "histType_mealDrinkServed"],
-    ["histModeAll", "histScope_all"],
-    ["histModeSeat", "histScope_seat"],
-    ["histModeType", "histScope_type"],
+    ["#histMode option[value='all']", "histScope_all"],
+    ["#histMode option[value='seat']", "histScope_seat"],
+    ["#histMode option[value='type']", "histScope_type"],
     ["#histType option[value='apServed']", "histType_apServed"],
     ["#histType option[value='tcServed']", "histType_tcServed"],
     ["#histType option[value='mealServed']", "histType_mealServed"],
@@ -1875,7 +1875,7 @@ function renderHistory() {
     h.innerHTML = "";
     const L = I18N[store.config.lang || "EN"];
     // === lecture des contrles ===
-    const mode = getHistoryMode();
+    const mode = document.getElementById("histMode")?.value || "all";
     const seatQ = (document.getElementById("histSeat")?.value || "")
         .trim()
         .toUpperCase()
@@ -1997,13 +1997,7 @@ function updateHistoryTitle() {
     // 2) Libell du bouton (dans la langue)
     const btn = document.getElementById("histOrderBtn");
     if (btn) {
-        const switchingToNewest = !!store.config.histAsc;
-        const label = switchingToNewest ? L.histOldestBtn : L.histNewestBtn;
-        const emoji = switchingToNewest ? "⬇️" : "⬆️";
-        const full = `${emoji} ${label}`;
-        btn.textContent = full;
-        btn.title = full;
-        btn.setAttribute("aria-label", full);
+        btn.textContent = store.config.histAsc ? L.histOldestBtn : L.histNewestBtn;
     }
 }
 function rebuildHistSeatSelect() {
@@ -2023,25 +2017,12 @@ function rebuildHistSeatSelect() {
             sel.appendChild(o);
         }
     }
-    // si l'ancienne selection existe encore, on la restaure
+    // si lancienne slection existe encore, on la restaure
     if ([...sel.options].some((o) => o.value === prev))
         sel.value = prev;
 }
-function getHistoryMode() {
-    return historyMode || "all";
-}
-function setHistoryMode(mode) {
-    historyMode = mode;
-    const buttons = Array.from(document.querySelectorAll(".hist-mode-switch .btn"));
-    buttons.forEach((btn) => {
-        const isActive = (btn.dataset.mode || "all") === mode;
-        btn.classList.toggle("active", isActive);
-        btn.setAttribute("aria-pressed", isActive ? "true" : "false");
-    });
-    updateHistoryControls();
-}
 function updateHistoryControls() {
-    const mode = getHistoryMode();
+    const mode = document.getElementById("histMode")?.value || "all";
     const seatWrap = document.getElementById("histSeatWrap");
     const typeWrap = document.getElementById("histTypeWrap");
     if (seatWrap)
@@ -2054,13 +2035,8 @@ function updateHistoryControls() {
 }
 // couteurs
 document
-    .querySelectorAll(".hist-mode-switch .btn")
-    .forEach((btn) => {
-    btn.addEventListener("click", () => {
-        const mode = btn.dataset.mode || "all";
-        setHistoryMode(mode);
-    });
-});
+    .getElementById("histMode")
+    ?.addEventListener("change", updateHistoryControls);
 document.getElementById("histSeat")?.addEventListener("change", renderHistory);
 document.getElementById("histType")?.addEventListener("change", renderHistory);
 document.getElementById("histOrderBtn")?.addEventListener("click", () => {
@@ -2070,7 +2046,7 @@ document.getElementById("histOrderBtn")?.addEventListener("click", () => {
     updateHistoryTitle();
 });
 // init affichage au chargement
-setHistoryMode("all");
+updateHistoryControls();
 function refreshBadges() {
     const lang = store.config.lang || "EN";
     store.inventory.hot_special = sumSPML();
@@ -2112,10 +2088,10 @@ function refreshBadges() {
     if (bPre) {
         bPre.title =
             lang === "FR"
-                ? "Somme des précommandes"
+                ? "Somme des prcommandes"
                 : lang === "DE"
-                    ? "Summe Vorbestellungen"
-                    : "Pre-order sum";
+                ? "Summe Vorbestellungen"
+                : "Pre-order sum";
     }
     const bSpml = document.querySelector('[data-badge="hot_special"]');
     if (bSpml) {
@@ -2459,7 +2435,6 @@ let modalSeat = null;
 let passengerCarouselOrder = [];
 let mealGestureCtx = null;
 const MEAL_SWIPE_THRESHOLD = 48;
-var historyMode = "all";
 function parseSeatKeyParts(key) {
     const m = /^(\d+)([A-Z]+)$/i.exec(key || "");
     if (!m)
@@ -3660,7 +3635,7 @@ function persistModal() {
     renderSeatmap();
     // Si l'historique est en mode Par sige, on met  jour la liste
     try {
-        const mode = getHistoryMode();
+        const mode = document.getElementById("histMode")?.value;
         if (mode === "seat" && typeof rebuildHistSeatSelect === "function")
             rebuildHistSeatSelect();
     }

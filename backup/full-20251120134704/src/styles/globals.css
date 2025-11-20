@@ -305,13 +305,6 @@ header {
   flex-wrap: wrap;
   align-items: center;
 }
-.hist-mode-switch .btn {
-  min-width: 90px;
-}
-.hist-mode-switch .btn.active {
-  background: var(--accent);
-  color: var(--accent-contrast);
-}
 .rows-counter {
   margin-left: auto;
 }
