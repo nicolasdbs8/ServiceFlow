@@ -160,10 +160,6 @@ function ensureNotesAccordions() {
     bindNoteAccordionLabel(entry);
   });
 }
-function setNoteAccordionOpen(id: string, open: boolean) {
-  const entry = noteAccordionRegistry.get(id);
-  if (entry) setNoteAccordionState(entry, open);
-}
 function bindNoteAccordionLabel(entry) {
   if (!entry || entry.labelObserver || !entry.labelId) return;
   const label = document.getElementById(entry.labelId);
@@ -171,7 +167,6 @@ function bindNoteAccordionLabel(entry) {
     syncNoteAccordionHeader(entry);
     return;
   }
-  label.classList.add("sr-only");
   const update = () => syncNoteAccordionHeader(entry);
   update();
   if (typeof MutationObserver === "undefined") return;
@@ -2242,7 +2237,6 @@ function refreshBadges() {
   setBadge("hot_special", store.inventory.hot_special);
   const preSum = sumPRE();
   setBadge("hot_pre", preSum);
-
   toggleElems(
     [
       document.getElementById("lblInvSpecial"),
@@ -2666,141 +2660,62 @@ function focusAdjacentSeat(step) {
 }
 
 function buildPassengerCarousel() {
-  const carousel = document.getElementById("passengerCarousel");
-  if (!carousel || !modalSeat) return;
-
   const seats = store.seats || {};
-  const current = parseSeatKeyParts(modalSeat.key);
-  const isMealPhase = (store.phase || "fiche") === "repas";
   const colPriority = ["A", "B", "C", "D", "E", "F"];
   const items = [];
 
-  if (isMealPhase) {
-    const pending = Object.keys(seats)
-      .map((key) => {
-        const parts = parseSeatKeyParts(key);
-        return parts ? { key, parts, data: seats[key] || {} } : null;
-      })
-      .filter(
-        (it): it is { key: string; parts: ReturnType<typeof parseSeatKeyParts>; data: any } =>
-          !!it && it.data?.occupied
-      )
-      .filter((it) => {
-        const served = it.data?.served?.meal;
-        const servedNone = it.data?.served?.mealNone;
-        return !(served && !servedNone);
-      });
-
-    if (current && !pending.some((it) => it.key === modalSeat.key)) {
-      pending.push({ key: modalSeat.key, parts: current, data: modalSeat.data });
-    }
-
-    pending.sort((a, b) => {
-      if (a.parts.row !== b.parts.row) return a.parts.row - b.parts.row;
-      return (
-        colPriority.indexOf(a.parts.col) - colPriority.indexOf(b.parts.col)
-      );
-    });
-
-    items.push(...pending);
-  } else if (current) {
-    for (const key of Object.keys(seats)) {
-      const parts = parseSeatKeyParts(key);
-      if (!parts) continue;
-      if (Math.abs(parts.row - current.row) > 1) continue;
-      const seatData = seats[key];
-      if (!seatData && key !== modalSeat.key) continue;
-      if (!seatData?.occupied && key !== modalSeat.key) continue;
-      items.push({ key, parts, data: seatData || {} });
-    }
-    if (!items.some((item) => item.key === modalSeat.key)) {
-      items.push({ key: modalSeat.key, parts: current, data: modalSeat.data });
-    }
-    items.sort((a, b) => {
-      if (a.parts.row === b.parts.row) {
-        return a.parts.col.localeCompare(b.parts.col);
-      }
-      return b.parts.row - a.parts.row;
-    });
+  for (const key of Object.keys(seats)) {
+    const parts = parseSeatKeyParts(key);
+    if (!parts) continue;
+    const seatData = seats[key] || {};
+    if (!seatData.occupied) continue;
+    items.push({ key, parts });
   }
+
+  items.sort((a, b) => {
+    if (a.parts.row === b.parts.row) {
+      const aIdx = colPriority.indexOf(a.parts.col);
+      const bIdx = colPriority.indexOf(b.parts.col);
+      if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+      if (aIdx !== -1) return -1;
+      if (bIdx !== -1) return 1;
+      return a.parts.col.localeCompare(b.parts.col);
+    }
+    return a.parts.row - b.parts.row;
+  });
 
   passengerCarouselOrder = items.map((item) => item.key);
-  carousel.innerHTML = "";
 
-  if (!items.length) {
-    carousel.setAttribute("data-empty", "true");
-    return;
+  const currentKey = modalSeat?.key || "";
+  const nav = document.getElementById("seatNav");
+  const prevBtn = document.getElementById(
+    "seatNavPrev"
+  ) as HTMLButtonElement | null;
+  const nextBtn = document.getElementById(
+    "seatNavNext"
+  ) as HTMLButtonElement | null;
+  const currentLabel = document.getElementById("seatNavCurrent");
+
+  if (currentLabel) currentLabel.textContent = currentKey || "--";
+
+  const idx = passengerCarouselOrder.indexOf(currentKey);
+  const hasPrev = idx > 0;
+  const hasNext = idx !== -1 && idx < passengerCarouselOrder.length - 1;
+
+  if (nav) {
+    nav.setAttribute("data-empty", passengerCarouselOrder.length ? "false" : "true");
   }
 
-  carousel.removeAttribute("data-empty");
-
-  for (const item of items) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "passenger-pill";
-    btn.tabIndex = 0;
-    btn.setAttribute("role", "option");
-    btn.setAttribute("data-seat", item.key);
-    btn.setAttribute(
-      "aria-selected",
-      item.key === modalSeat.key ? "true" : "false"
-    );
-    if (!item.data?.occupied) btn.classList.add("is-empty");
-    if (item.data?.served?.meal) btn.classList.add("is-served");
-
-    const dot = document.createElement("span");
-    dot.className = "status-dot";
-    const status = (item.data?.status || "").toUpperCase();
-    if (status === "FTL") dot.classList.add("ftl");
-    else if (status === "SEN") dot.classList.add("sen");
-    else if (status === "HON") dot.classList.add("hon");
-    else if (status === "VIP") dot.classList.add("vip");
-    else if (status === "FCL") dot.classList.add("fcl");
-    else if (status === "PAD") dot.classList.add("pad");
-    btn.appendChild(dot);
-
-    const label = document.createElement("span");
-    label.className = "passenger-label";
-    label.textContent = item.key;
-    btn.appendChild(label);
-
-    addClickAndTouchListener(btn, () => {
-      if (item.key === modalSeat.key) return;
-      focusSeatByKey(item.key);
-    });
-
-    btn.addEventListener("keydown", (evt) => {
-      const key = evt.key;
-      if (key === "Enter" || key === " ") {
-        evt.preventDefault();
-        if (item.key !== modalSeat.key) focusSeatByKey(item.key);
-        return;
-      }
-      if (key === "ArrowLeft" || key === "ArrowRight") {
-        evt.preventDefault();
-        const idx = passengerCarouselOrder.indexOf(item.key);
-        const targetIdx = idx + (key === "ArrowLeft" ? -1 : 1);
-        const targetKey = passengerCarouselOrder[targetIdx];
-        if (!targetKey) return;
-        const targetBtn = carousel.querySelector(
-          `[data-seat='${targetKey}']`
-        ) as HTMLElement | null;
-        targetBtn?.focus();
-      }
-    });
-
-    carousel.appendChild(btn);
+  if (prevBtn) {
+    prevBtn.disabled = !hasPrev;
+    prevBtn.setAttribute("aria-disabled", (!hasPrev).toString());
+    prevBtn.onclick = () => focusAdjacentSeat(-1);
   }
 
-  const active = carousel.querySelector(
-    '[aria-selected="true"]'
-  ) as HTMLElement | null;
-  if (active && typeof active.scrollIntoView === "function") {
-    try {
-      active.scrollIntoView({ inline: "center", block: "nearest" });
-    } catch (_) {
-      // ignore scroll issues on legacy browsers
-    }
+  if (nextBtn) {
+    nextBtn.disabled = !hasNext;
+    nextBtn.setAttribute("aria-disabled", (!hasNext).toString());
+    nextBtn.onclick = () => focusAdjacentSeat(1);
   }
 }
 
@@ -3282,29 +3197,14 @@ function openSeatModal(row, col) {
     // Remet tout  l'tat "par dfaut"
     // (tout revient dans rightCol, notes reviennent dans tcBlock)
     if (tc) {
-      // Rapatrier les blocs de notes et actions dans tcBlock (si on les avait sortis)
+      // Rapatrier les blocs de notes dans tcBlock (si on les avait sortis)
       const apNotes = document.getElementById("aperoNotesBlock");
       const tcNotes = document.getElementById("tcNotesBlock");
       if (apNotes && apNotes.parentElement !== tc) tc.appendChild(apNotes);
       if (tcNotes && tcNotes.parentElement !== tc) tc.appendChild(tcNotes);
-      const apActions = document.getElementById("aperoBlock");
-      if (apActions && apActions.parentElement !== tc) tc.appendChild(apActions);
-      const tcActions = document.getElementById("tcServeBlock");
-      if (tcActions && tcActions.parentElement !== tc) tc.appendChild(tcActions);
     }
     if (meal && meal.parentElement !== rightCol) rightCol?.appendChild(meal);
     if (tc && tc.parentElement !== rightCol) rightCol?.appendChild(tc);
-    const mdnDefault = document.getElementById("mealDrinkNotesBlock");
-    if (mdnDefault && mdnDefault.parentElement !== rightCol) {
-      rightCol?.appendChild(mdnDefault);
-    }
-    const serveRowDefault = document.getElementById("mealDrinkServeRow");
-    if (serveRowDefault && serveRowDefault.parentElement !== rightCol) {
-      rightCol?.appendChild(serveRowDefault);
-    }
-    setNoteAccordionOpen("aperoNotesBlock", false);
-    setNoteAccordionOpen("tcNotesBlock", false);
-    setNoteAccordionOpen("mealDrinkNotesBlock", false);
     if (rightNotes) {
       rightNotes.innerHTML = "";
       rightNotes.style.display = "none";
@@ -3354,16 +3254,10 @@ function openSeatModal(row, col) {
           const lblAp = document.getElementById("mdAperoNotes");
           if (lblAp)
             lblAp.textContent = L.mdAperoNotes || "Drink / aperitif notes";
-          setNoteAccordionOpen("aperoNotesBlock", true);
         }
         // titre = Apritif
         const title = document.getElementById("tcTitle");
         if (title) title.textContent = L.tcTitle || "Aperitif";
-        const apActions = document.getElementById("aperoBlock");
-        if (apActions && rightCol) {
-          apActions.style.display = "block";
-          rightCol.appendChild(apActions);
-        }
       }
       showOnlyLeft("tcBlock"); // ne garder que le panneau boissons  gauche
       ensureDrinkGridActive();
@@ -3388,16 +3282,10 @@ function openSeatModal(row, col) {
           tcNotes.style.display = "block";
           rightNotes?.appendChild(tcNotes); // notes  droite
           if (rightNotes) rightNotes.style.display = "block";
-          setNoteAccordionOpen("tcNotesBlock", true);
         }
         // titre = Th & Caf
         const title = document.getElementById("tcTitle");
         if (title) title.textContent = L.chips_tc || "Tea & Coffee";
-        const tcActions = document.getElementById("tcServeBlock");
-        if (tcActions && rightCol) {
-          tcActions.style.display = "block";
-          rightCol.appendChild(tcActions);
-        }
       }
       showOnlyLeft("tcBlock");
       ensureDrinkGridActive();
@@ -3408,8 +3296,8 @@ function openSeatModal(row, col) {
 
     if (phase === "repas") {
       // REPAS :
-      // - gauche : boissons (tcBlock)
-      // - droite : MEAL + notes/boutons de boisson
+      // - gauche : boissons (tcBlock + notes + boutons)
+      // - droite : MEAL uniquement
       if (modal) modal.classList.remove("mono");
 
       if (tc && leftCol) {
@@ -3422,6 +3310,22 @@ function openSeatModal(row, col) {
         if (apNotes) apNotes.style.display = "none";
         if (tcNotes) tcNotes.style.display = "none";
 
+        // >>> AFFICHER + DPLACER le bloc notes Meal Drink sous le panneau boissons
+        const mdn = document.getElementById("mealDrinkNotesBlock");
+        if (mdn) {
+          mdn.style.display = "block";
+          tc.appendChild(mdn);
+          const lbl = document.getElementById("mdMealDrinkNotes");
+          if (lbl) lbl.textContent = L.mealDrinkNotes || "Meal drink notes";
+        }
+
+        // Boutons Serve drink / Rien / horodateur (aprs les notes)
+        const serveRow = document.getElementById("mealDrinkServeRow");
+        if (serveRow) {
+          serveRow.style.display = "flex";
+          tc.appendChild(serveRow);
+        }
+
         // Titre ct gauche
         const title = document.getElementById("tcTitle");
         if (title) title.textContent = L.mealDrinkTitle || "Meal drinks";
@@ -3430,34 +3334,6 @@ function openSeatModal(row, col) {
       if (meal && rightCol) {
         meal.style.display = "block";
         rightCol.appendChild(meal);
-        const insertAfter = (
-          anchor: HTMLElement,
-          node: HTMLElement | null
-        ): HTMLElement => {
-          if (node) {
-            if (anchor && typeof anchor.insertAdjacentElement === "function") {
-              anchor.insertAdjacentElement("afterend", node);
-            } else {
-              rightCol.appendChild(node);
-            }
-            return node;
-          }
-          return anchor;
-        };
-        let anchor: HTMLElement = meal;
-        const mdn = document.getElementById("mealDrinkNotesBlock") as HTMLElement | null;
-        if (mdn) {
-          mdn.style.display = "block";
-          const lbl = document.getElementById("mdMealDrinkNotes");
-          if (lbl) lbl.textContent = L.mealDrinkNotes || "Meal drink notes";
-          anchor = insertAfter(anchor, mdn);
-          setNoteAccordionOpen("mealDrinkNotesBlock", false);
-        }
-        const serveRow = document.getElementById("mealDrinkServeRow") as HTMLElement | null;
-        if (serveRow) {
-          serveRow.style.display = "flex";
-          anchor = insertAfter(anchor, serveRow);
-        }
       }
       // (NOUVEAU) En mode repas, on ractive aussi la grille boissons
       if (document.getElementById("drinkGrid")) {

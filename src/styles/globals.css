@@ -1293,6 +1293,45 @@ body.theme-dark .subtab.active {
   gap: 8px;
   min-height: 26px;
 }
+.modal-seat-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--panel-2);
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.seat-nav__btn {
+  border: none;
+  background: transparent;
+  padding: 4px 6px;
+  font-size: 13px;
+  line-height: 1;
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.seat-nav__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.seat-nav__btn:not(:disabled):not([aria-disabled="true"]):hover {
+  background: var(--panel-border);
+}
+.seat-nav__btn:disabled,
+.seat-nav__btn[aria-disabled="true"] {
+  opacity: 0.35;
+  cursor: default;
+}
+.seat-nav__current {
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
 .status-pill {
   display: inline-flex;
   align-items: center;

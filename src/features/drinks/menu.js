@@ -617,10 +617,10 @@ function renderSubOptions(cat, sub) {
     const previouslyOpen = currentSubKey === subKey
         ? Array.from(container.querySelectorAll(".accordion__section"))
             .filter((section) => section.dataset.open === "true")
-            .map((section) => section.dataset.accordionId)
+            .map((section) => section.dataset.accordionId || "")
             .filter(Boolean)
         : [];
-    const subsection = SUBSECTION_MAP.get(`${cat}::${sub}`);
+    const subsection = SUBSECTION_MAP.get(subKey);
     if (!subsection) {
         container.innerHTML = "";
         return;
@@ -728,20 +728,20 @@ function renderSubOptions(cat, sub) {
     let defaultOpenId = null;
     if (subsection.defaultOpen !== undefined && subsection.defaultOpen !== null) {
         if (typeof subsection.defaultOpen === "number") {
-            const entry = subsection.sections?.[subsection.defaultOpen];
-            defaultOpenId = (entry === null || entry === void 0 ? void 0 : entry.id) || String(subsection.defaultOpen);
+            const defaultSection = subsection.sections?.[subsection.defaultOpen];
+            defaultOpenId = defaultSection?.id || String(subsection.defaultOpen);
         }
         else {
             defaultOpenId = String(subsection.defaultOpen);
         }
     }
-    const toOpen = previouslyOpen.length
+    const targetsToOpen = previouslyOpen.length > 0
         ? previouslyOpen
-        : defaultOpenId !== null && defaultOpenId !== undefined
+        : defaultOpenId !== null
             ? [defaultOpenId]
             : [];
     if (accordionCtrl) {
-        toOpen.forEach((id) => accordionCtrl.open(id));
+        targetsToOpen.forEach((target) => accordionCtrl.open(target));
     }
     applyDrinkEmojis(container);
     currentSubKey = subKey;

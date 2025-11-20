@@ -355,6 +355,29 @@
         <div class="modal-header__primary">
           <h3 id="modalTitle" class="title">Seat</h3>
           <div id="modalSeatMeta" class="modal-meta"></div>
+          <div
+            class="modal-seat-nav"
+            id="seatNav"
+            aria-label="Navigation sièges occupés"
+          >
+            <button
+              type="button"
+              class="seat-nav__btn"
+              id="seatNavPrev"
+              aria-label="Siège occupé précédent"
+            >
+              ◀
+            </button>
+            <span class="seat-nav__current" id="seatNavCurrent">--</span>
+            <button
+              type="button"
+              class="seat-nav__btn"
+              id="seatNavNext"
+              aria-label="Siège occupé suivant"
+            >
+              ▶
+            </button>
+          </div>
         </div>
         <div class="modal-header__secondary">
           <div class="modal-header__actions">
@@ -522,12 +545,6 @@
           <section class="modal-card" id="mealBlock">
             <div class="modal-card__header meal-header">
               <div class="title" id="mdMeal">Meal</div>
-              <div
-                class="passenger-carousel"
-                id="passengerCarousel"
-                role="listbox"
-                aria-label="Nearby passengers"
-              ></div>
             </div>
             <div class="modal-card__content">
               <div class="form-row form-row--stack">
