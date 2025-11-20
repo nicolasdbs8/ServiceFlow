@@ -970,7 +970,12 @@ body.theme-dark .seat.occupied {
 .filter-bar > #filterTabs {
   flex: 0 1 auto;
 }
-.tab-bar,
+.tab-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  justify-content: center;
+}
 .subtab-bar {
   display: flex;
   gap: 6px;
@@ -988,10 +993,12 @@ body.theme-dark .seat.occupied {
     border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .tab {
-  padding: 8px 16px;
+  padding: 8px 12px;
   border-bottom-width: 2px;
   border-radius: var(--radius-md) var(--radius-md) 0 0;
-  min-width: 120px;
+  min-width: 96px;
+  flex: 1 1 0;
+  white-space: nowrap;
   text-align: center;
   font-weight: 600;
 }
