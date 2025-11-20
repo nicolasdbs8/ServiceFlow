@@ -2625,25 +2625,25 @@ function buildPassengerCarousel() {
   const items = [];
 
   if (isMealPhase) {
-    for (const key of Object.keys(seats)) {
-      const parts = parseSeatKeyParts(key);
-      if (!parts) continue;
-      const seatData = seats[key] || {};
-      if (!seatData.occupied) continue;
-      const served = seatData?.served?.meal;
-      const servedNone = seatData?.served?.mealNone;
-      if (served && !servedNone) continue;
-      items.push({ key, parts, data: seatData });
+    const pending = Object.keys(seats)
+      .map(key => {
+        const parts = parseSeatKeyParts(key);
+        return parts ? { key, parts, data: seats[key] || {} } : null;
+      })
+      .filter(it => !!it && it.data?.occupied)
+      .filter(it => {
+        const served = it.data?.served?.meal;
+        const servedNone = it.data?.served?.mealNone;
+        return !(served && !servedNone);
+      });
+    if (current && !pending.some(it => it.key === modalSeat.key)) {
+      pending.push({ key: modalSeat.key, parts: current, data: modalSeat.data });
     }
-    if (current && !items.some((it) => it.key === modalSeat.key)) {
-      items.push({ key: modalSeat.key, parts: current, data: modalSeat.data });
-    }
-    items.sort((a, b) => {
-      if (a.parts.row === b.parts.row) {
-        return colPriority.indexOf(a.parts.col) - colPriority.indexOf(b.parts.col);
-      }
-      return a.parts.row - b.parts.row;
+    pending.sort((a, b) => {
+      if (a.parts.row !== b.parts.row) return a.parts.row - b.parts.row;
+      return colPriority.indexOf(a.parts.col) - colPriority.indexOf(b.parts.col);
     });
+    items.push(...pending);
   } else if (current) {
     for (const key of Object.keys(seats)) {
       const parts = parseSeatKeyParts(key);
