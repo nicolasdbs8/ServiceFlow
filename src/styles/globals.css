@@ -1437,7 +1437,7 @@ body.theme-dark .subtab.active {
 }
 .layout-btn {
   flex: 0 0 auto;
-  min-width: 72px;
+  min-width: 54px;
 }
 .layout-btn.active {
   background: var(--accent);
