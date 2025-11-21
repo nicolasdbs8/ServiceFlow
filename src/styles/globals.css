@@ -213,6 +213,11 @@ body.theme-light .flow-item {
 body.theme-light .flow-item:hover {
   background: var(--surface-hover); /* hover clair, lisible */
 }
+body.theme-light .flow-item.eat-with {
+  background: #cedffd;
+  border: 2px solid var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
 
 body.theme-light .flow-seat {
   color: var(--text);
@@ -1162,7 +1167,7 @@ body.theme-dark .subtab.active {
   position: absolute;
   top: 4px;
   right: 6px;
-  font-size: 8px;
+  font-size: 6px;
   line-height: 14px;
   background: var(--accent-strong);
   border: 1px solid var(--panel-border);
@@ -1958,6 +1963,20 @@ body.client .seatmap {
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
+}
+.flow-item.eat-with {
+  border-radius: 999px;
+  border: 2px solid var(--accent);
+  background: #cedffd;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+body.theme-dark .flow-item.eat-with {
+  background: var(--panel-2);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.flow-item.eat-with + .flow-item.eat-with[data-pair]:not(:first-child) {
+  margin-top: -2px;
 }
 .flow-item:hover {
   background: var(--surface-hover);

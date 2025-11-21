@@ -853,9 +853,15 @@ function renderSubOptions(cat: string, sub: string) {
   currentSubKey = subKey;
 }
 function resetState(keys?: Array<keyof DrinkState>) {
-  const targetKeys =
-    keys && keys.length ? keys : (Object.keys(DRINK_STATE_TEMPLATE) as Array<keyof DrinkState>);
-  targetKeys.forEach((key) => {
+  // If a specific list is provided, reset only those keys; an empty list means reset nothing.
+  if (Array.isArray(keys)) {
+    if (!keys.length) return;
+    keys.forEach((key) => {
+      drinkSel[key] = cloneState()[key];
+    });
+    return;
+  }
+  (Object.keys(DRINK_STATE_TEMPLATE) as Array<keyof DrinkState>).forEach((key) => {
     drinkSel[key] = cloneState()[key];
   });
 }
@@ -1018,12 +1024,26 @@ export function updateServeDrinkButtons() {
   const store = resolveStore?.();
   const phase = store?.phase;
 
+  // Fallback: si drinkSel est vide (ex: Caotina rouverte sans sous-options), relire le select chaud
+  let cat = drinkSel.cat;
+  let sub = drinkSel.sub;
+  const chaudSelect = document.getElementById("tc_chaud_type") as HTMLSelectElement | null;
+  if ((!cat || !sub) && chaudSelect?.value) {
+    cat = "chaud";
+    sub = chaudSelect.value;
+  }
+  const catSelect = document.getElementById("tc_cat") as HTMLSelectElement | null;
+  if (catSelect?.value) {
+    if (!cat) cat = catSelect.value;
+    if (!sub) sub = catSelect.value; // ex: chocolat (sans sous-options)
+  }
+
   let ok = false;
-  if (drinkSel.cat && drinkSel.sub) {
-    if (FIRST_LEVEL_OK.has(drinkSel.sub)) {
+  if (cat && sub) {
+    if (FIRST_LEVEL_OK.has(sub) || sub === "chocolat" || cat === "chocolat") {
       ok = true;
     } else {
-      const required = REQUIRED_BY_SUB.get(drinkSel.sub);
+      const required = REQUIRED_BY_SUB.get(sub);
       if (required) {
         ok = Boolean(drinkSel[required]);
       }

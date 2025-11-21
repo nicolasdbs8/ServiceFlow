@@ -893,6 +893,30 @@ function addHistoryEvt(evt) {
   renderHistory();
 }
 
+// Evite les doublons consécutifs sur le même siège / type / contexte (utile pour les commandes boisson)
+function addHistoryEvtOnce(evt: {
+  ts?: number;
+  type: string;
+  seat?: string;
+  ctx?: string;
+  label?: string;
+  notes?: string;
+  ap?: any;
+}) {
+  const last = Array.isArray(store.history) ? store.history[0] : null;
+  if (
+    last &&
+    last.type === evt.type &&
+    last.seat === evt.seat &&
+    (evt.ctx ? last.ctx === evt.ctx : true) &&
+    (evt.label ? last.label === evt.label : true) &&
+    (evt.notes ? last.notes === evt.notes : true)
+  ) {
+    return;
+  }
+  addHistoryEvt(evt);
+}
+
 function playBeep() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1973,12 +1997,7 @@ function renderSeatCell(r, col) {
     );
   }
   if (seat?.served && seat.served.trayCleared) {
-    appendSeatFlag(
-      ib,
-      "flag-cleared",
-      L.lgclear || L.undoClearTray || "Cleared",
-      "CLR"
-    );
+    // The cleared badge is intentionally hidden (pax no longer needs a pill)
   }
 
   // Sleep emoji removed: seat greyed out is enough. Keeping a later marker only.
@@ -1987,7 +2006,7 @@ function renderSeatCell(r, col) {
       ib,
       "flag-later",
       L.lgLater || L.mdLater || "Serve later",
-      "L8R"
+      "🛎️"
     );
   }
   d.appendChild(ib);
@@ -2096,18 +2115,28 @@ function renderHistory() {
 
     switch (it.type) {
       case "trayCleared":
-        msg = I18N[store.config.lang || "EN"].clearTray + " " + it.seat;
+        msg = `${I18N[store.config.lang || "EN"].clearTray} - ${it.seat}`;
         break;
 
       case "trayUncleared":
-        msg = I18N[store.config.lang || "EN"].undoClearTray + " " + it.seat;
+        msg = `${I18N[store.config.lang || "EN"].undoClearTray} - ${it.seat}`;
         break;
 
       case "apServed": {
         const seat = it.seat;
         const label = summarizeApDrink(it.ap, L, store.config.lang) || "";
         const notes = it.notes ? `  ${it.notes}` : "";
-        msg = `${L.histApServed} ${seat}${label ? "  " + label : ""}${notes}`;
+        msg = `${L.histApServed} ${seat}${label ? " - " + label : ""}${notes}`;
+        break;
+      }
+
+      case "apOrdered": {
+        const seat = it.seat;
+        const label = summarizeApDrink(it.ap, L, store.config.lang) || "";
+        const notes = it.notes ? `  ${it.notes}` : "";
+        msg = `${L.histApOrdered || "Aperitif ordered at"} ${seat}${
+          label ? " - " + label : ""
+        }${notes}`;
         break;
       }
 
@@ -2119,7 +2148,19 @@ function renderHistory() {
           it.ctx === "repas"
             ? L.histMealDrinkServed || "Meal drinks served at"
             : L.histTcServed || "Tea & coffee served at";
-        msg = `${head} ${seat}${label ? "  " + label : ""}${notes}`;
+        msg = `${head} ${seat}${label ? " - " + label : ""}${notes}`;
+        break;
+      }
+
+      case "tcOrdered": {
+        const seat = it.seat;
+        const label = summarizeApDrink(it.ap, L, store.config.lang) || "";
+        const notes = it.notes ? `  ${it.notes}` : "";
+        const head =
+          it.ctx === "repas"
+            ? L.histMealDrinkOrdered || "Meal drinks ordered at"
+            : L.histTcOrdered || "Tea & coffee ordered at";
+        msg = `${head} ${seat}${label ? " - " + label : ""}${notes}`;
         break;
       }
 
@@ -2131,7 +2172,7 @@ function renderHistory() {
         const labelTxt =
           it.label === "__TRAY__" ? L.trayShort || "Tray" : it.label || "";
         msg = `${L.histMealServed} ${it.seat}${
-          labelTxt ? "  " + labelTxt : ""
+          labelTxt ? " - " + labelTxt : ""
         }`;
         break;
       }
@@ -2153,17 +2194,17 @@ function renderHistory() {
       }
       case "seatMoveStart":
         // Ex: "[12:03]  Move pax 3C"
-        msg = `${L.moveSeat} ${it.from}`;
+        msg = `${L.moveSeat} - ${it.from}`;
         break;
 
       case "seatMoved":
         // Ex: "[12:04] 3C  4E : Dplac"
-        msg = `${it.from}  ${it.to} : ${L.moved}`;
+        msg = `${it.from} -> ${it.to} - ${L.moved}`;
         break;
 
       case "seatSwapped":
         // Ex: "[12:05] 3C  4E : chang"
-        msg = `${it.a}  ${it.b} : ${L.swapped}`;
+        msg = `${it.a} <-> ${it.b} - ${L.swapped}`;
         break;
 
       case "text":
@@ -3740,6 +3781,23 @@ function tc_updateChaudUI() {
 
 function writeTcToUI(d) {
   const ap = d.apDrink || {};
+  // Resync drinkSel for existing selections (enables buttons on reopen)
+  drinkSel.cat = "";
+  drinkSel.sub = "";
+  if (ap.cat === "soft") {
+    drinkSel.cat = "soft";
+    drinkSel.sub = ap.softType || "";
+  } else if (["cafe", "deca", "the", "chocolat"].includes(ap.cat || "")) {
+    drinkSel.cat = "chaud";
+    drinkSel.sub = ap.cat || "";
+  } else if (
+    ["champagne", "vin_rouge", "vin_blanc", "biere", "cocktail", "digestif"].includes(
+      ap.cat || ""
+    )
+  ) {
+    drinkSel.cat = "alcool";
+    drinkSel.sub = ap.cat || "";
+  }
   const catSel = document.getElementById("tc_cat");
   if (catSel) catSel.value = ap.cat || "";
 
@@ -4494,10 +4552,10 @@ document.getElementById("serveAperitif")?.addEventListener("click", () => {
     )
   );
 
-  addHistoryEvt({
-    type: "apServed",
+  addHistoryEvtOnce({
+    type: "apOrdered",
     seat: modalSeat.key,
-    ap: apCopy, // <- lobjet boisson complet
+    ap: apCopy, // <- l'objet boisson complet
     notes: $("#m_aperoNotes").value || d.aperoNotes || "",
   });
 
@@ -4554,8 +4612,8 @@ document.getElementById("serveTC")?.addEventListener("click", () => {
       ? document.getElementById("m_mealDrinkNotes")?.value || ""
       : document.getElementById("m_tcNotes")?.value || d.tcNotes || "";
 
-  addHistoryEvt({
-    type: "tcServed",
+  addHistoryEvtOnce({
+    type: "tcOrdered",
     seat: modalSeat.key,
     ts: Date.now(),
     ap: apCopy,
@@ -5005,17 +5063,7 @@ $("#serveMeal").addEventListener("click", () => {
     d.served.meal = Date.now();
     d.served.mealNone = false; // <- on sort de ltat Rien
 
-    const label = d.spml
-      ? d.spml
-      : d.preLabel
-      ? d.preLabel
-      : chosenMeal === "viande"
-      ? store.menu.viandeLabel || I18N[store.config.lang || "EN"].optNormalMeat
-      : chosenMeal === "vege"
-      ? store.menu.vegeLabel || I18N[store.config.lang || "EN"].optNormalVeg
-      : chosenMeal === "plateau"
-      ? "__TRAY__"
-      : "";
+    const label = mealHistoryLabel(d, L);
     addHistoryEvt({ type: "mealServed", seat: modalSeat.key, label });
 
     // (Historique dj gr ailleurs si besoin)
@@ -5506,6 +5554,20 @@ function mealChoiceTagHTML(d) {
   return `<span class="tag">${emoji}</span>`;
 }
 
+function mealHistoryLabel(d: any, L: any) {
+  if (!d) return "";
+  if (d.spml) return d.spml;
+  if (d.preLabel) {
+    const lab = String(d.preLabel || "").trim();
+    return lab.length > 10 ? `${lab.slice(0, 10)}...` : lab;
+  }
+  const nm = (d.normalMeal || "").trim();
+  if (nm === "viande") return L?.optNormalMeat || "Option 1";
+  if (nm === "vege") return L?.optNormalVeg || "Option 2";
+  if (nm === "plateau") return L?.trayShort || "Tray";
+  return "";
+}
+
 function attachFlowSwipeHandler(
   row: HTMLElement,
   seatKey: string,
@@ -5610,7 +5672,13 @@ function markDrinkDelivered(seatKey: string, phase: string) {
   const isApero = phase === "aperitif";
   if (isApero) {
     seat.served.aperitifDelivered = Date.now();
-    addHistoryEvt({ type: "apDelivered", seat: seatKey });
+    const apCopy = JSON.parse(JSON.stringify(seat.apDrink || {}));
+    addHistoryEvtOnce({
+      type: "apServed",
+      seat: seatKey,
+      ap: apCopy,
+      notes: seat.aperoNotes || "",
+    });
     save();
     renderSeatmap();
     renderServiceFlow();
@@ -5619,7 +5687,15 @@ function markDrinkDelivered(seatKey: string, phase: string) {
 
   if (phase === "tc") {
     seat.served.tcDelivered = Date.now();
-    addHistoryEvt({ type: "tcDelivered", seat: seatKey });
+    const apCopy = JSON.parse(JSON.stringify(seat.apDrink || {}));
+    addHistoryEvtOnce({
+      type: "tcServed",
+      seat: seatKey,
+      ts: Date.now(),
+      ap: apCopy,
+      notes: seat.tcNotes || "",
+      ctx: store.phase,
+    });
     save();
     renderSeatmap();
     renderServiceFlow();
@@ -5675,18 +5751,7 @@ function markMealServedFromFlow(seatKey: string, seat: any) {
   seat.served.meal = Date.now();
   seat.served.mealNone = false;
 
-  const label = seat.spml
-    ? seat.spml
-    : seat.preLabel
-    ? seat.preLabel
-    : chosenMeal === "viande"
-    ? store.menu.viandeLabel || I18N[store.config.lang || "EN"].optNormalMeat
-    : chosenMeal === "vege"
-    ? store.menu.vegeLabel || I18N[store.config.lang || "EN"].optNormalVeg
-    : chosenMeal === "plateau"
-    ? "__TRAY__"
-    : "";
-
+  const label = mealHistoryLabel(seat, L);
   addHistoryEvt({ type: "mealServed", seat: seatKey, label });
   playBeep();
   save();
@@ -5754,13 +5819,13 @@ function renderServiceFlow() {
     }
 
     if (store.phase === "aperitif" || store.phase === "tc") {
-      // En apritif : apServed ; en T&C : tcServed
-      const evtType = store.phase === "aperitif" ? "apServed" : "tcServed"; //  cl historique existante
+      // En apritif : apOrdered ; en T&C : tcOrdered (hors repas)
+      const evtType = store.phase === "aperitif" ? "apOrdered" : "tcOrdered";
       const list = (Array.isArray(store.history) ? store.history : []).filter(
         (ev) =>
           ev &&
           ev.type === evtType &&
-          (evtType !== "tcServed" || ev.ctx !== "repas")
+          (evtType !== "tcOrdered" || ev.ctx !== "repas")
       );
 
       if (list.length === 0) {
@@ -5790,9 +5855,7 @@ function renderServiceFlow() {
               tags.push('<span class="tag pad">PAD</span>');
             else if (d.status === "FTL")
               tags.push('<span class="tag ftl">FTL</span>');
-            if (d.eatWith)
-              tags.push('<span class="tag"> ' + d.eatWith + "</span>");
-            if (d.sleep) tags.push('<span class="tag sleep"></span>');
+            if (d.sleep) tags.push(`<span class="tag sleep">${SEAT_ICONS.sleep}</span>`);
           }
 
           // Libell boisson + notes  on rutilise ton rsumeur + emoji
@@ -5853,9 +5916,7 @@ function renderServiceFlow() {
             tags.push('<span class="tag pad">PAD</span>');
           else if (d.status === "FTL")
             tags.push('<span class="tag ftl">FTL</span>');
-          if (d.eatWith)
-            tags.push('<span class="tag"> ' + d.eatWith + "</span>");
-          if (d.sleep) tags.push('<span class="tag sleep"></span>');
+          if (d.sleep) tags.push(`<span class="tag sleep">${SEAT_ICONS.sleep}</span>`);
 
           const row = document.createElement("div");
           row.className = "flow-item";
@@ -5897,11 +5958,14 @@ function renderServiceFlow() {
         tags.push('<span class="tag pad">PAD</span>');
       else if (d.status === "FTL")
         tags.push('<span class="tag ftl">FTL</span>');
-      if (d.eatWith) tags.push('<span class="tag"> ' + d.eatWith + "</span>");
-      if (d.sleep) tags.push('<span class="tag sleep"></span>');
+      if (d.sleep) tags.push(`<span class="tag sleep">${SEAT_ICONS.sleep}</span>`);
 
       const row = document.createElement("div");
-      row.className = "flow-item";
+      row.className = "flow-item" + (d.eatWith ? " eat-with" : "");
+      if (d.eatWith) {
+        const pairKey = [item.key, d.eatWith].sort().join("-");
+        row.dataset.pair = pairKey;
+      }
       row.dataset.key = item.key;
 
       //  AJOUT : mettre le choix de repas en premier
@@ -5949,8 +6013,12 @@ function renderServiceFlow() {
           tags.push('<span class="tag ftl">FTL</span>');
         if (d.sleep) tags.push('<span class="tag sleep"></span>');
 
-        const row = document.createElement("div");
-        row.className = "flow-item";
+      const row = document.createElement("div");
+      row.className = "flow-item" + (d.eatWith ? " eat-with" : "");
+      if (d.eatWith) {
+        const pairKey = [item.key, d.eatWith].sort().join("-");
+        row.dataset.pair = pairKey;
+      }
         row.dataset.key = item.key;
         row.innerHTML = `
           <div class="flow-seat">${item.key}</div>
