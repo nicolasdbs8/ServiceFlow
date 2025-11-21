@@ -18,8 +18,8 @@
 <title>SWISS ServiceFlow v.1.0</title>
 
 
-  <script type="module" crossorigin src="/assets/index-CpbVBoPk.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-CrYDJThg.css">
+  <script type="module" crossorigin src="/assets/index-DyJlFpyd.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-J_rA0Fv5.css">
 </head>
 <body class="theme-dark">
 <header>
@@ -251,12 +251,6 @@
       <div class="item"><div class="square vip"></div>VIP</div>
       <div class="item"><div class="square fcl"></div>FCL</div>
       <div class="item"><div class="square pad"></div>PAD</div>
-    </div>
-    <span class="legend-divider" aria-hidden="true"></span>
-    <div class="legend-column">
-      <div class="item"><span id="lgInfant"> Infant</span></div>
-      <div class="item"><span id="lgChild"> Child</span></div>
-      <div class="item"><span id="lgSleep"> Sleeping</span></div>
     </div>
   </div>
 </div>
@@ -587,7 +581,7 @@
                 <textarea id="m_mealDrinkNotes" placeholder=""></textarea>
               </div>
 
-              <div id="mealDrinkServeRow" class="action-row" style="display:none">
+              <div id="mealDrinkServeRow" class="action-row action-row--stack" style="display:none">
                 <button class="btn primary" id="serveMealDrink" data-i18n="serveMealDrink">Order drink</button>
                 <button class="btn ghost" id="serveMealDrinkNone" data-i18n="serveNone">No drink</button>
                 <span id="mhMealDrinkInline" class="action-note"></span>
@@ -716,10 +710,10 @@
                 <div id="m_history_apero" class="action-note"></div>
               </div>
 
-              <div id="tcServeBlock" class="action-row" style="display:none">
+              <div id="tcServeBlock" class="action-row action-row--stack" style="display:none">
                 <button class="btn primary" id="serveTC">Order drink</button>
                 <button class="btn ghost" id="serveTCNone" data-i18n="serveNone">No drink</button>
-                <span id="mhTCInline" class="action-note"></span>
+                <div id="mhTCInline" class="action-note"></div>
               </div>
             </div>
           </section>
