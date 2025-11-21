@@ -2441,6 +2441,11 @@ function updateServeMealButtonState() {
     }
     const btnNone = $("#serveMealNone");
     if (btnNone) {
+        // Disable "No food" when a meal/SPML/pre-order option is selected
+        btnNone.disabled = hasChoice;
+        btnNone.setAttribute("aria-disabled", hasChoice ? "true" : "false");
+        btnNone.classList.toggle("disabled", hasChoice);
+        btnNone.style.pointerEvents = hasChoice ? "none" : "";
         btnNone.classList.toggle("is-hot", isNone);
         btnNone.setAttribute("aria-pressed", isNone ? "true" : "false");
         btnNone.setAttribute("data-variant", "ghost");
@@ -2627,50 +2632,42 @@ function renderSpmlCards(seatData) {
     if (hidden)
         hidden.value = selected;
     container.innerHTML = "";
-    let hasAny = false;
-    for (const code of SPML_CODES) {
+    const available = SPML_CODES.map((code) => {
         const qty = store.inventory.spml[code] || 0;
         const isChosen = selected === code;
-        if (!qty && !isChosen)
-            continue;
-        hasAny = true;
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "meal-card";
-        btn.dataset.value = code;
-        btn.setAttribute("role", "radio");
-        const rowEl = document.createElement("div");
-        rowEl.className = "meal-card__row";
-        const label = document.createElement("div");
-        label.className = "meal-card__name";
-        label.textContent = code;
-        const meta = document.createElement("div");
-        meta.className = "meal-card__meta";
-        const count = document.createElement("span");
-        count.className = "badge";
-        count.textContent = String(Math.max(0, qty));
-        meta.appendChild(count);
-        rowEl.appendChild(label);
-        rowEl.appendChild(meta);
-        btn.appendChild(rowEl);
-        if (isChosen) {
-            btn.classList.add("is-selected");
-            btn.setAttribute("aria-pressed", "true");
-        }
-        else {
-            btn.setAttribute("aria-pressed", "false");
-        }
-        if (qty <= 0 && !isChosen) {
-            btn.setAttribute("aria-disabled", "true");
-        }
-        addClickAndTouchListener(btn, () => {
+        return { code, qty, isChosen };
+    }).filter((entry) => entry.qty > 0 || entry.isChosen);
+    if (!available.length) {
+        row.style.display = "none";
+        return;
+    }
+    const useDropdown = available.length > 3;
+    if (useDropdown) {
+        const select = document.createElement("select");
+        select.id = "m_spml_select";
+        const emptyOpt = document.createElement("option");
+        emptyOpt.value = "";
+        emptyOpt.textContent = "";
+        select.appendChild(emptyOpt);
+        available.forEach(({ code, qty, isChosen }) => {
+            const opt = document.createElement("option");
+            opt.value = code;
+            opt.textContent = `${code} (${Math.max(0, qty)})`;
+            if (qty <= 0 && !isChosen)
+                opt.disabled = true;
+            select.appendChild(opt);
+        });
+        select.value = selected || "";
+        select.addEventListener("change", () => {
             if (!modalSeat)
                 return;
             const seat = modalSeat.data;
-            const next = seat.spml === code ? "" : code;
+            const next = select.value || "";
             const ok = setSpmlChoice(seat, next);
-            if (!ok)
+            if (!ok) {
+                select.value = selected || "";
                 return;
+            }
             save();
             renderSeatmap();
             renderServiceFlow();
@@ -2679,9 +2676,59 @@ function renderSpmlCards(seatData) {
             updateServeMealButtonState();
             buildPassengerCarousel();
         });
-        container.appendChild(btn);
+        container.appendChild(select);
     }
-    row.style.display = hasAny ? "" : "none";
+    else {
+        available.forEach(({ code, qty, isChosen }) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "meal-card";
+            btn.dataset.value = code;
+            btn.setAttribute("role", "radio");
+            const rowEl = document.createElement("div");
+            rowEl.className = "meal-card__row";
+            const label = document.createElement("div");
+            label.className = "meal-card__name";
+            label.textContent = code;
+            const meta = document.createElement("div");
+            meta.className = "meal-card__meta";
+            const count = document.createElement("span");
+            count.className = "badge";
+            count.textContent = String(Math.max(0, qty));
+            meta.appendChild(count);
+            rowEl.appendChild(label);
+            rowEl.appendChild(meta);
+            btn.appendChild(rowEl);
+            if (isChosen) {
+                btn.classList.add("is-selected");
+                btn.setAttribute("aria-pressed", "true");
+            }
+            else {
+                btn.setAttribute("aria-pressed", "false");
+            }
+            if (qty <= 0 && !isChosen) {
+                btn.setAttribute("aria-disabled", "true");
+            }
+            addClickAndTouchListener(btn, () => {
+                if (!modalSeat)
+                    return;
+                const seat = modalSeat.data;
+                const next = seat.spml === code ? "" : code;
+                const ok = setSpmlChoice(seat, next);
+                if (!ok)
+                    return;
+                save();
+                renderSeatmap();
+                renderServiceFlow();
+                renderNormalMealCards(seat);
+                renderSpmlCards(seat);
+                updateServeMealButtonState();
+                buildPassengerCarousel();
+            });
+            container.appendChild(btn);
+        });
+    }
+    row.style.display = "";
 }
 function handleMealTouchStart(ev) {
     if (!modalSeat)
@@ -2745,7 +2792,7 @@ function populateModalOptions() {
         if (inStock || isChosen) {
             const o = document.createElement("option");
             o.value = label;
-            o.textContent = label;
+            o.textContent = `${label} (${Math.max(0, qty)})`;
             preSel.appendChild(o);
         }
     }
@@ -5111,6 +5158,140 @@ function mealChoiceTagHTML(d) {
     const emoji = nm === "viande" ? "1" : nm === "vege" ? "2" : ""; // plateau =
     return `<span class="tag">${emoji}</span>`;
 }
+function attachFlowSwipeHandler(row, seatKey, phase) {
+    let armed = false;
+    let armTimer = null;
+    let touchStartX = null;
+    const resetArm = () => {
+        armed = false;
+        row.classList.remove("flow-swipe-armed");
+        row.style.transform = "";
+        if (armTimer) {
+            clearTimeout(armTimer);
+            armTimer = null;
+        }
+    };
+    const confirm = () => {
+        if (!seatKey)
+            return;
+        markDrinkDelivered(seatKey, phase);
+        resetArm();
+    };
+    row.addEventListener("click", () => {
+        if (!armed) {
+            armed = true;
+            row.classList.add("flow-swipe-armed");
+            row.style.transition = "transform 0.15s ease";
+            row.style.transform = "translateX(6px)";
+            if (armTimer)
+                clearTimeout(armTimer);
+            armTimer = window.setTimeout(resetArm, 1200);
+            return;
+        }
+        confirm();
+    });
+    row.addEventListener("touchstart", (ev) => {
+        touchStartX = ev.touches?.[0]?.clientX ?? null;
+    }, { passive: true });
+    row.addEventListener("touchend", (ev) => {
+        if (touchStartX === null)
+            return;
+        const dx = (ev.changedTouches?.[0]?.clientX ?? touchStartX) - touchStartX;
+        if (Math.abs(dx) > 40) {
+            row.style.transition = "transform 0.2s ease";
+            row.style.transform = `translateX(${dx > 0 ? 28 : -28}px)`;
+            confirm();
+        }
+        touchStartX = null;
+    }, { passive: true });
+}
+function markDrinkDelivered(seatKey, phase) {
+    const [r, c] = (typeof parseSeatKey === "function"
+        ? parseSeatKey(seatKey)
+        : [null, null]);
+    if (!r || !c)
+        return;
+    const seat = seatObj(r, c);
+    if (!seat.served)
+        seat.served = {};
+    const isApero = phase === "aperitif";
+    if (isApero) {
+        seat.served.aperitifDelivered = Date.now();
+        addHistoryEvt({ type: "apDelivered", seat: seatKey });
+        save();
+        renderSeatmap();
+        renderServiceFlow();
+        return;
+    }
+    if (phase === "tc") {
+        seat.served.tcDelivered = Date.now();
+        addHistoryEvt({ type: "tcDelivered", seat: seatKey });
+        save();
+        renderSeatmap();
+        renderServiceFlow();
+        return;
+    }
+    if (phase === "repas") {
+        markMealServedFromFlow(seatKey, seat);
+    }
+}
+function markMealServedFromFlow(seatKey, seat) {
+    const L = I18N[store.config.lang || "EN"];
+    if (!seat || !seat.occupied)
+        return;
+    if (!seat.served)
+        seat.served = {};
+    if (seat.served.meal)
+        return;
+    const chosenMeal = (seat.normalMeal || "").trim();
+    const hasChoice = !!seat.spml || !!seat.preLabel || ["viande", "vege", "plateau"].includes(chosenMeal);
+    if (!hasChoice)
+        return;
+    const needsTray = seat.spml || seat.preLabel || ["viande", "vege", "plateau"].includes(chosenMeal);
+    if (!seat.alloc || typeof seat.alloc !== "object") {
+        seat.alloc = { normalKey: null, spmlCode: null, preLabel: null, trayReserved: false };
+    }
+    if (needsTray) {
+        const hadReservedTray = seat.alloc.trayReserved === true && chosenMeal === "plateau";
+        if (hadReservedTray) {
+            seat.served.trayUsed = true;
+            seat.served.trayFromReservation = true;
+            seat.alloc.trayReserved = false;
+        }
+        else {
+            if ((store.inventory.plateaux || 0) <= 0) {
+                alert(L.alertNoTrays || "No trays available.");
+                return;
+            }
+            store.inventory.plateaux = (store.inventory.plateaux || 0) - 1;
+            seat.served.trayUsed = true;
+            seat.served.trayFromReservation = false;
+            refreshBadges();
+        }
+    }
+    else {
+        seat.served.trayUsed = false;
+        seat.served.trayFromReservation = false;
+    }
+    seat.served.meal = Date.now();
+    seat.served.mealNone = false;
+    const label = seat.spml
+        ? seat.spml
+        : seat.preLabel
+            ? seat.preLabel
+            : chosenMeal === "viande"
+                ? store.menu.viandeLabel || I18N[store.config.lang || "EN"].optNormalMeat
+                : chosenMeal === "vege"
+                    ? store.menu.vegeLabel || I18N[store.config.lang || "EN"].optNormalVeg
+                    : chosenMeal === "plateau"
+                        ? "__TRAY__"
+                        : "";
+    addHistoryEvt({ type: "mealServed", seat: seatKey, label });
+    playBeep();
+    save();
+    renderSeatmap();
+    renderServiceFlow();
+}
 function renderServiceFlow() {
     const L = I18N[store.config.lang || "EN"];
     const boxNow = document.getElementById("flowNow"); // chemin de service
@@ -5200,6 +5381,10 @@ function renderServiceFlow() {
                     const subHtml = sub
                         ? `<div class="flow-sub">${em ? em + " " : ""}${escapeHTML(sub)}</div>`
                         : "";
+                    if (d && ((isApero && (d.served?.aperitifDelivered)) ||
+                        (isTC && (d.served?.tcDelivered)))) {
+                        continue;
+                    }
                     const row = document.createElement("div");
                     row.className = "flow-item";
                     row.dataset.key = ev.seat || "";
@@ -5208,7 +5393,7 @@ function renderServiceFlow() {
           <div class="flow-desc">${tags.join(" ")}${subHtml}</div>
           <div class="tag">${L.flowTaken || "Taken"}</div>
         `;
-                    row.addEventListener("click", () => onSeatClick?.(ev.seat || ""));
+                    attachFlowSwipeHandler(row, ev.seat || "", store.phase);
                     boxLater.appendChild(row);
                 }
             }
@@ -5299,10 +5484,15 @@ function renderServiceFlow() {
   <div class="tag">${L.flowServeTag || "Serve"}</div>
   ${drinkLineNow}
 `;
-            row.addEventListener("click", () => onSeatClick(item.key));
-            boxNow.appendChild(row);
+        if (store.phase === "repas") {
+            attachFlowSwipeHandler(row, item.key, "repas");
         }
+        else {
+            row.addEventListener("click", () => onSeatClick(item.key));
+        }
+        boxNow.appendChild(row);
     }
+}
     // ---  dbarrasser (MIDDLE)
     if (boxClear) {
         if (!clearList || clearList.length === 0) {
@@ -5337,7 +5527,7 @@ function renderServiceFlow() {
           <div class="flow-desc">${tags.join(" ")}</div>
           <div class="tag"> ${L.flowClearTag || " dbarrasser"}</div>
         `;
-                row.addEventListener("click", () => onSeatClick(item.key));
+                attachFlowSwipeHandler(row, item.key, "clear");
                 boxClear.appendChild(row);
             }
         }

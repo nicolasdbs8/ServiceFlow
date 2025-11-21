@@ -96,7 +96,7 @@ export const I18N = {
     mdAperoNotes: "Drink / aperitif notes",
     mdTCNotes: "Tea & coffee notes",
     // Meal
-    serveAperitif: "Serve aperitif",
+    serveAperitif: "Order drink",
     mdMeal: "Meal",
     mdNormal: "Normal choice",
     optNormalMeat: "Option 1",
@@ -135,11 +135,12 @@ export const I18N = {
     // Tea & Coffee
     tcCH: "Swiss",
     tcForeign: "Foreign",
-    serveTC: "Serve Tea & Coffee",
+    serveTC: "Order drink",
     serveMealDrink: "Order drink",
     histTcServed: "Tea & Coffee served at",
     histMealDrinkServed: "Meal drink ordered by",
-    serveNone: "Nothing",
+    serveNone: "No drink",
+    serveNoFood: "No food",
     // =========================
     // LEGEND
     // =========================
@@ -411,7 +412,7 @@ export const I18N = {
     mdAperoNotes: "Boisson / notes apéritif",
     mdTCNotes: "Notes thé & café",
     // Repas
-    serveAperitif: "Apéritif servi",
+    serveAperitif: "Commander boisson",
     mdMeal: "Plat principal",
     mdNormal: "Choix normal",
     optNormalMeat: "Option 1",
@@ -450,11 +451,12 @@ export const I18N = {
     // Thé & café
     tcCH: "Suisse",
     tcForeign: "Étranger",
-    serveTC: "Thé & Café servi",
+    serveTC: "Commander boisson",
     serveMealDrink: "Commander boisson",
     histTcServed: "Thé & Café servi à",
     histMealDrinkServed: "Boisson repas commandée par",
-    serveNone: "Rien",
+    serveNone: "Pas de boisson",
+    serveNoFood: "Pas de plat",
     // =========================
     // LÉGENDE
     // =========================
@@ -717,7 +719,7 @@ export const I18N = {
     mdAperoNotes: "Getränk / Aperitif-Notizen",
     mdTCNotes: "Tee & Kaffee – Notizen",
     // Mahlzeit
-    serveAperitif: "Aperitif serviert",
+    serveAperitif: "Getränk bestellen",
     mdMeal: "Hauptgang",
     mdNormal: "Normale Auswahl",
     optNormalMeat: "Option 1",
@@ -756,11 +758,12 @@ export const I18N = {
     // Tee & Kaffee
     tcCH: "Schweiz",
     tcForeign: "Ausland",
-    serveTC: "Tee & Kaffee serviert",
+    serveTC: "Getränk bestellen",
     serveMealDrink: "Getränk bestellen",
     histTcServed: "Tee & Kaffee serviert um",
     histMealDrinkServed: "Getränk bestellt bei",
-    serveNone: "Nichts",
+    serveNone: "Kein Getränk",
+    serveNoFood: "Kein Essen",
     // =========================
     // LEGENDE
     // =========================
