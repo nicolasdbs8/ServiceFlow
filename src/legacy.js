@@ -593,10 +593,8 @@ function updateServeDrinkLabel() {
     if (!btn)
         return;
     const L = I18N[store.config.lang || "EN"];
-    btn.textContent =
-        store.phase === "repas"
-            ? L.serveMealDrink || "Serve drink"
-            : L.serveTC || "Serve tea & coffee";
+    const label = L.serveMealDrink || L.serveTC || "Order drink";
+    btn.textContent = label;
 }
 function getCocktailTip(code) {
     const tips = (window.COCKTAIL_TIPS || {})[store.config.lang || "EN"] || {};
@@ -2324,6 +2322,14 @@ function setSpmlChoice(seat, code) {
     if (code) {
         code = code.trim();
     }
+    // Plateau (tray-only) is exclusive: release any reserved tray and clear the choice
+    if (seat.alloc.trayReserved) {
+        store.inventory.plateaux = (store.inventory.plateaux || 0) + 1;
+        seat.alloc.trayReserved = false;
+    }
+    if (seat.normalMeal === "plateau") {
+        seat.normalMeal = "";
+    }
     if (seat.alloc.normalKey) {
         refundNormal(seat, seat.alloc.normalKey);
         seat.normalMeal = "";
@@ -2358,6 +2364,14 @@ function setPreChoice(seat, label) {
         seat.alloc = { normalKey: null, spmlCode: null, preLabel: null };
     if (label) {
         label = label.trim();
+    }
+    // Plateau (tray-only) is exclusive: release any reserved tray and clear the choice
+    if (seat.alloc.trayReserved) {
+        store.inventory.plateaux = (store.inventory.plateaux || 0) + 1;
+        seat.alloc.trayReserved = false;
+    }
+    if (seat.normalMeal === "plateau") {
+        seat.normalMeal = "";
     }
     if (seat.alloc.normalKey) {
         refundNormal(seat, seat.alloc.normalKey);
@@ -2449,6 +2463,7 @@ function updateServeMealButtonState() {
         btnNone.classList.toggle("is-hot", isNone);
         btnNone.setAttribute("aria-pressed", isNone ? "true" : "false");
         btnNone.setAttribute("data-variant", "ghost");
+        btnNone.title = btnNone.disabled ? "" : btnNone.title;
     }
     const trayBtn = $("#clearTrayBtn");
     if (trayBtn) {
@@ -5162,14 +5177,20 @@ function attachFlowSwipeHandler(row, seatKey, phase) {
     let armed = false;
     let armTimer = null;
     let touchStartX = null;
+    let swipeDx = null;
+    const SWIPE_CONFIRM_PX = 70;
+    const SWIPE_VISUAL_MAX = 90;
     const resetArm = () => {
         armed = false;
         row.classList.remove("flow-swipe-armed");
+        row.style.transition = "";
         row.style.transform = "";
         if (armTimer) {
             clearTimeout(armTimer);
             armTimer = null;
         }
+        touchStartX = null;
+        swipeDx = null;
     };
     const confirm = () => {
         if (!seatKey)
@@ -5192,17 +5213,36 @@ function attachFlowSwipeHandler(row, seatKey, phase) {
     });
     row.addEventListener("touchstart", (ev) => {
         touchStartX = ev.touches?.[0]?.clientX ?? null;
+        swipeDx = null;
+        row.style.transition = "none";
+    }, { passive: true });
+    row.addEventListener("touchmove", (ev) => {
+        if (touchStartX === null)
+            return;
+        const currentX = ev.touches?.[0]?.clientX ?? touchStartX;
+        swipeDx = currentX - touchStartX;
+        const limited = Math.max(-SWIPE_VISUAL_MAX, Math.min(SWIPE_VISUAL_MAX, swipeDx));
+        row.style.transform = `translateX(${limited}px)`;
+        const armedNow = Math.abs(swipeDx) > SWIPE_CONFIRM_PX * 0.6;
+        row.classList.toggle("flow-swipe-armed", armedNow);
     }, { passive: true });
     row.addEventListener("touchend", (ev) => {
         if (touchStartX === null)
             return;
-        const dx = (ev.changedTouches?.[0]?.clientX ?? touchStartX) - touchStartX;
-        if (Math.abs(dx) > 40) {
-            row.style.transition = "transform 0.2s ease";
-            row.style.transform = `translateX(${dx > 0 ? 28 : -28}px)`;
+        const endX = ev.changedTouches?.[0]?.clientX ?? touchStartX;
+        const dx = swipeDx !== null ? swipeDx : endX - touchStartX;
+        const shouldConfirm = Math.abs(dx) > SWIPE_CONFIRM_PX;
+        row.style.transition = "transform 0.18s ease";
+        if (shouldConfirm) {
+            row.style.transform = `translateX(${dx > 0 ? SWIPE_VISUAL_MAX : -SWIPE_VISUAL_MAX}px)`;
             confirm();
         }
+        else {
+            row.style.transform = "translateX(0px)";
+            window.setTimeout(resetArm, 180);
+        }
         touchStartX = null;
+        swipeDx = null;
     }, { passive: true });
 }
 function markDrinkDelivered(seatKey, phase) {
@@ -5233,6 +5273,9 @@ function markDrinkDelivered(seatKey, phase) {
     }
     if (phase === "repas") {
         markMealServedFromFlow(seatKey, seat);
+    }
+    if (phase === "clear") {
+        markTrayClearedFromFlow(seatKey, seat);
     }
 }
 function markMealServedFromFlow(seatKey, seat) {
@@ -5289,6 +5332,22 @@ function markMealServedFromFlow(seatKey, seat) {
     addHistoryEvt({ type: "mealServed", seat: seatKey, label });
     playBeep();
     save();
+    renderSeatmap();
+    renderServiceFlow();
+}
+function markTrayClearedFromFlow(seatKey, seat) {
+    const L = I18N[store.config.lang || "EN"];
+    if (!seat || !seat.occupied)
+        return;
+    if (!seat.served || !seat.served.meal || !seat.served.trayUsed)
+        return;
+    if (seat.served.trayCleared)
+        return;
+    seat.served.trayCleared = true;
+    addHistoryEvt({ type: "trayCleared", seat: seatKey });
+    playBeep();
+    save();
+    refreshBadges();
     renderSeatmap();
     renderServiceFlow();
 }
@@ -5381,8 +5440,10 @@ function renderServiceFlow() {
                     const subHtml = sub
                         ? `<div class="flow-sub">${em ? em + " " : ""}${escapeHTML(sub)}</div>`
                         : "";
-                    if (d && ((isApero && (d.served?.aperitifDelivered)) ||
-                        (isTC && (d.served?.tcDelivered)))) {
+                    // Ignorer si déjà validé comme servi via swipe
+                    if (d &&
+                        ((isApero && d.served?.aperitifDelivered) ||
+                            (isTC && d.served?.tcDelivered))) {
                         continue;
                     }
                     const row = document.createElement("div");
@@ -5484,15 +5545,15 @@ function renderServiceFlow() {
   <div class="tag">${L.flowServeTag || "Serve"}</div>
   ${drinkLineNow}
 `;
-        if (store.phase === "repas") {
-            attachFlowSwipeHandler(row, item.key, "repas");
+            if (store.phase === "repas") {
+                attachFlowSwipeHandler(row, item.key, "repas");
+            }
+            else {
+                row.addEventListener("click", () => onSeatClick(item.key));
+            }
+            boxNow.appendChild(row);
         }
-        else {
-            row.addEventListener("click", () => onSeatClick(item.key));
-        }
-        boxNow.appendChild(row);
     }
-}
     // ---  dbarrasser (MIDDLE)
     if (boxClear) {
         if (!clearList || clearList.length === 0) {
