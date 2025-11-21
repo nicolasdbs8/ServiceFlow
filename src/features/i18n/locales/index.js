@@ -336,7 +336,7 @@ export const I18N = {
         // CHIPS & FILTRES (rangée actions)
         // =========================
         chips_apero: "Apéritif",
-        chips_meal: "Plat principal",
+        chips_meal: "Plat",
         chips_tc: "Thé & Café",
         chips_fiche: "Fiche pax",
         filter_all: "Tous les sièges",
@@ -413,7 +413,7 @@ export const I18N = {
         mdTCNotes: "Notes thé & café",
         // Repas
         serveAperitif: "Commander boisson",
-        mdMeal: "Plat principal",
+        mdMeal: "Plat",
         mdNormal: "Choix normal",
         optNormalMeat: "Option 1",
         optNormalVeg: "Option 2",
@@ -436,7 +436,7 @@ export const I18N = {
         undoClearTray: "Annuler débarrassage",
         modalTabFiche: "Fiche pax",
         modalTabApero: "Apéritif",
-        modalTabMeal: "Plat principal",
+        modalTabMeal: "Plat",
         modalTabTC: "Thé Café",
         ordered: "commandé",
         moveSeat: "🔁 Déplacer pax",

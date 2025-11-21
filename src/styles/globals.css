@@ -625,6 +625,9 @@ label:has(input[type="checkbox"]:checked) {
   padding: 2px 8px; /* coussin interne haut/bas */
   margin: 2px 0 6px; /* espace avec ce qui suit (textarea) */
 }
+#m_mealDrinkNotes {
+  min-height: 48px;
+}
 
 .grid {
   display: grid;
@@ -880,12 +883,37 @@ body.theme-dark .seat.occupied {
   opacity: 0.95;
   z-index: 2;
 }
-.icon {
-  background: var(--accent-strong);
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--panel-border);
-  color: var(--accent-contrast);
+.seat-flag {
+  padding: 0 3px;
+  font-size: 6px;
+  font-weight: 700;
+  line-height: 10px;
+  letter-spacing: 0.1px;
+  background: var(--panel-2);
+  color: var(--muted);
+  border-color: var(--panel-border);
+  min-width: unset;
+}
+.seat-flag.flag-child,
+.seat-flag.flag-infant {
+  color: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+body.theme-dark .seat-flag.flag-child,
+body.theme-dark .seat-flag.flag-infant {
+  color: #fff;
+  border-color: var(--accent-strong);
+}
+.seat-flag.flag-served {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+.seat-flag.flag-cleared {
+  color: var(--muted);
+}
+.seat-flag.flag-later {
+  color: var(--title);
+  border-color: var(--panel-border);
 }
 .sleeping {
   filter: grayscale(1) opacity(0.85);
@@ -902,11 +930,8 @@ body.theme-dark .seat.occupied {
 }
 .legend {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--muted);
+  flex-direction: column; /* chaque ligne lune sous lautre */
+  gap: 6px;
 }
 .legend .item {
   display: flex;
@@ -923,11 +948,6 @@ body.theme-dark .seat.occupied {
   height: 12px;
   border-radius: var(--radius-xs);
   border: 1px solid var(--panel-border);
-}
-.legend {
-  display: flex;
-  flex-direction: column; /* chaque ligne lune sous lautre */
-  gap: 6px;
 }
 
 .legend-row {
@@ -1090,7 +1110,7 @@ body.theme-dark .seat.occupied {
   border-radius: var(--radius-lg);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
   padding: 12px;
-  width: min(360px, 90vw);
+  width: min(85px, 85vw);
   z-index: 15;
 }
 .legend-popover[data-open="true"] {
@@ -1142,13 +1162,19 @@ body.theme-dark .subtab.active {
   position: absolute;
   top: 4px;
   right: 6px;
-  font-size: 12px;
+  font-size: 8px;
+  line-height: 14px;
   background: var(--accent-strong);
   border: 1px solid var(--panel-border);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   z-index: 3;
   color: var(--accent-contrast);
+}
+.meal-tag.vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  padding: 4px 2px;
 }
 @media print {
   header,
@@ -1273,6 +1299,8 @@ body.theme-dark .subtab.active {
   letter-spacing: 0.5px;
   color: currentColor;
   font-size: 12px;
+  white-space: nowrap;
+  text-align: center;
 }
 
 .modal-side-tab:not(.active):hover {
@@ -1737,8 +1765,17 @@ body.theme-dark .subtab.active {
   align-items: center;
 }
 .action-row--stack {
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.action-row--stack button {
+  flex: 1 1 50%;
+  min-width: calc(50% - 6px);
+}
+.action-row--stack .action-note {
+  flex-basis: 100%;
+  width: 100%;
 }
 .action-note {
   font-size: 12px;
@@ -1967,6 +2004,14 @@ body.client .seatmap {
 }
 .tag.sleep {
   background: #222;
+}
+
+/* Seat flags (child/infant/served) override base tag sizing to stay small and avoid masking seat labels */
+.seat-flag {
+  padding: 0 4px;
+  font-size: 8px;
+  line-height: 12px;
+  min-width: auto;
 }
 
 /* === Datepicker (lger, inline) === */

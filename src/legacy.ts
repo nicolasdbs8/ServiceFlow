@@ -230,11 +230,16 @@ function syncNoteAccordionsByPhase(phase: string) {
   }
 }
 
-function appendSeatIcon(bar: HTMLElement, emoji: string, label: string) {
-  if (!bar || !emoji) return;
+function appendSeatFlag(
+  bar: HTMLElement,
+  cls: string,
+  label: string,
+  text?: string
+) {
+  if (!bar) return;
   const icon = document.createElement("div");
-  icon.className = "icon";
-  icon.textContent = emoji;
+  icon.className = `tag seat-flag ${cls}`.trim();
+  if (text) icon.textContent = text;
   if (label) {
     icon.title = label;
     icon.setAttribute("aria-label", label);
@@ -1928,14 +1933,23 @@ function renderSeatCell(r, col) {
       ? ""
       : null;
 
+    let tagText: string | null = null;
+    let vertical = false;
     if (seat.spml) {
-      tag.textContent = seat.spml;
-      d.appendChild(tag);
+      tagText = seat.spml;
+      vertical = true;
     } else if (seat.preLabel) {
-      tag.textContent = seat.preLabel;
-      d.appendChild(tag);
+      tagText = "PRE";
+      vertical = true;
     } else if (mealEmoji) {
-      tag.textContent = mealEmoji;
+      tagText = mealEmoji;
+    } else if (seat?.served?.mealNone) {
+      tagText = "Ø";
+    }
+
+    if (tagText) {
+      tag.textContent = tagText;
+      if (vertical) tag.classList.add("vertical");
       d.appendChild(tag);
     }
   }
@@ -1943,44 +1957,37 @@ function renderSeatCell(r, col) {
   const ib = document.createElement("div");
   ib.className = "iconbar";
   if (seat.type === "infant") {
-    appendSeatIcon(ib, SEAT_ICONS.infant, L.lgInfant || L.mdInfant || "Infant");
+    appendSeatFlag(
+      ib,
+      "flag-infant",
+      L.lgInfant || L.mdInfant || "Infant",
+      "INF"
+    );
   }
   if (seat.type === "child") {
-    appendSeatIcon(ib, SEAT_ICONS.child, L.lgChild || L.mdChild || "Child");
-  }
-  if (
-    seat?.served &&
-    seat.served.meal &&
-    seat.served.trayUsed &&
-    !seat.served.trayCleared
-  ) {
-    appendSeatIcon(
+    appendSeatFlag(
       ib,
-      SEAT_ICONS.mealPending,
-      L.lgServed || L.clearTray || "Served"
+      "flag-child",
+      L.lgChild || L.mdChild || "Child",
+      "CHD"
     );
   }
-
   if (seat?.served && seat.served.trayCleared) {
-    appendSeatIcon(
+    appendSeatFlag(
       ib,
-      SEAT_ICONS.trayCleared,
-      L.lgclear || L.undoClearTray || "Cleared"
+      "flag-cleared",
+      L.lgclear || L.undoClearTray || "Cleared",
+      "CLR"
     );
   }
 
-  if (seat.sleep) {
-    appendSeatIcon(
-      ib,
-      SEAT_ICONS.sleep,
-      L.lgSleep || L.mdSleepTxt || "Sleeping"
-    );
-  }
+  // Sleep emoji removed: seat greyed out is enough. Keeping a later marker only.
   if (seat.serveLaterAt) {
-    appendSeatIcon(
+    appendSeatFlag(
       ib,
-      SEAT_ICONS.later,
-      L.lgLater || L.mdLater || "Serve later"
+      "flag-later",
+      L.lgLater || L.mdLater || "Serve later",
+      "L8R"
     );
   }
   d.appendChild(ib);
@@ -4745,7 +4752,8 @@ function updateModalPhaseNav() {
     const span = btn.querySelector("span");
     if (!span) return;
     const txt = (L as Record<string, string>)[key] || "";
-    if (txt.trim()) span.textContent = txt.trim();
+    const normalized = txt.replace(/\s+/g, " ").trim();
+    if (normalized) span.textContent = normalized;
   };
   setTabLabel(bF, "modalTabFiche");
   setTabLabel(bA, "modalTabApero");
@@ -5486,7 +5494,11 @@ function mealChoiceTagHTML(d) {
     return `<span class="${cls}">${escapeHTML(d.spml)}</span>`;
   }
   if (d.preLabel) {
-    return `<span class="tag">${escapeHTML(d.preLabel)}</span>`;
+    const shortLabel =
+      typeof d.preLabel === "string" && d.preLabel.length > 10
+        ? `${d.preLabel.slice(0, 10)}...`
+        : d.preLabel;
+    return `<span class="tag">${escapeHTML(shortLabel)}</span>`;
   }
   const nm = (d.normalMeal || "").trim(); // "viande" | "vege" | "plateau" | ""
   if (!nm) return "";
@@ -6300,11 +6312,7 @@ function drawSeatPNG(ctx, r, col, x, y, w, h) {
       : seat.normalMeal === "plateau"
       ? ""
       : null;
-    tag = seat.spml
-      ? seat.spml
-      : seat.preLabel
-      ? seat.preLabel
-      : mealEmoji || "";
+    tag = seat.spml ? seat.spml : seat.preLabel ? "PRE" : mealEmoji || "";
   }
 
   if (tag) {
