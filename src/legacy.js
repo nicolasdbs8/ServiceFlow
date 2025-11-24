@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { applyDrinkEmojis, configureDrinkMenu, drinkSel, initDrinkGrid, initializeDrinkMenu, reactivateDrinkGrid, resetDrinkUI, showAllDrinkGroups, updateServeDrinkButtons, } from "./features/drinks/menu";
 import { I18N } from "./features/i18n/locales";
+import { computeMenuRotationFromDate, lookupAutoMenuLabels, } from "./features/menu/autoMenu";
 // Fonction pour rendre un lment cliquable sur PC et tactile
 function addClickAndTouchListener(element, handler) {
     element.addEventListener("click", handler);
@@ -24,6 +25,17 @@ const SPML_CODES = [
     "VJML",
     "VLML",
 ];
+const PREORDER_CODES = [
+    "OBHA",
+    "OBHB",
+    "OBHC",
+    "OBHD",
+    "OBHE",
+    "OBHF",
+    "OBHG",
+    "OBHH",
+    "OBHJ",
+];
 const $ = (sel) => document.querySelector(sel);
 const store = {
     title: { flightNo: "", date: "" },
@@ -42,7 +54,21 @@ const store = {
         spml: {},
         pre: {},
     },
-    menu: { viandeLabel: "", vegeLabel: "" },
+    menu: {
+        mode: "auto",
+        direction: null,
+        serviceType: null,
+        breakfastType: "standard",
+        rotation: null,
+        viandeLabel: "",
+        vegeLabel: "",
+        manualViandeLabel: "",
+        manualVegeLabel: "",
+        autoViandeLabel: "",
+        autoVegeLabel: "",
+        autoStatus: "",
+        autoNote: "",
+    },
     seats: {},
     phase: "fiche",
     reminders: [],
@@ -50,6 +76,52 @@ const store = {
     clientView: false,
 };
 configureDrinkMenu({ getStore: () => store });
+const MENU_DEFAULTS = {
+    mode: "auto",
+    direction: null,
+    serviceType: null,
+    breakfastType: "standard",
+    rotation: null,
+    viandeLabel: "",
+    vegeLabel: "",
+    manualViandeLabel: "",
+    manualVegeLabel: "",
+    autoViandeLabel: "",
+    autoVegeLabel: "",
+    autoStatus: "",
+    autoNote: "",
+};
+function ensureMenuDefaults() {
+    if (!store.menu)
+        store.menu = {};
+    const m = store.menu;
+    if (m.mode !== "manual" && m.mode !== "auto")
+        m.mode = MENU_DEFAULTS.mode;
+    if (m.direction !== "outbound" && m.direction !== "inbound")
+        m.direction = MENU_DEFAULTS.direction;
+    if (m.serviceType !== "day" && m.serviceType !== "breakfast")
+        m.serviceType = MENU_DEFAULTS.serviceType;
+    if (m.breakfastType !== "nightstop" && m.breakfastType !== "standard")
+        m.breakfastType = MENU_DEFAULTS.breakfastType;
+    if (m.rotation === undefined)
+        m.rotation = null;
+    if (typeof m.viandeLabel !== "string")
+        m.viandeLabel = "";
+    if (typeof m.vegeLabel !== "string")
+        m.vegeLabel = "";
+    if (typeof m.manualViandeLabel !== "string")
+        m.manualViandeLabel = m.viandeLabel || "";
+    if (typeof m.manualVegeLabel !== "string")
+        m.manualVegeLabel = m.vegeLabel || "";
+    if (typeof m.autoViandeLabel !== "string")
+        m.autoViandeLabel = "";
+    if (typeof m.autoVegeLabel !== "string")
+        m.autoVegeLabel = "";
+    if (typeof m.autoStatus !== "string")
+        m.autoStatus = "";
+    if (typeof m.autoNote !== "string")
+        m.autoNote = "";
+}
 const SEAT_ICONS = {
     infant: "\uD83D\uDC76", // 👶
     child: "\uD83E\uDDD2", // 🧒
@@ -82,6 +154,9 @@ const NOTE_ACCORDION_SECTIONS = [
     },
 ];
 const noteAccordionRegistry = new Map();
+const BULK_OCC_CONFIRM_THRESHOLD = 20;
+let bulkOccupyMode = false;
+const bulkOccupySelection = new Set();
 function ensureNotesAccordions() {
     NOTE_ACCORDION_SECTIONS.forEach((cfg) => {
         const block = document.getElementById(cfg.id);
@@ -813,10 +888,21 @@ function onSaveTitleSnapshot() {
                 //  AJOUT : remettre  jour les libells viande/vg visibles
                 const lv = document.getElementById("labelViande");
                 const lg = document.getElementById("labelVege");
-                if (lv)
-                    lv.value = store?.menu?.viandeLabel || "";
-                if (lg)
-                    lg.value = store?.menu?.vegeLabel || "";
+                ensureMenuDefaults();
+                if (lv) {
+                    lv.value =
+                        store?.menu?.manualViandeLabel ||
+                            store?.menu?.viandeLabel ||
+                            "";
+                    store.menu.manualViandeLabel = lv.value || "";
+                }
+                if (lg) {
+                    lg.value =
+                        store?.menu?.manualVegeLabel || store?.menu?.vegeLabel || "";
+                    store.menu.manualVegeLabel = lg.value || "";
+                }
+                syncMenuUI();
+                refreshAutoMenu(false);
                 // persistance + re-render
                 switchStorageIfTitleChanged(oldKey);
                 save();
@@ -953,6 +1039,13 @@ function updateModalStatusBadge() {
     meta.innerHTML = "";
     const select = document.getElementById("m_status");
     const status = select?.value;
+    const type = modalSeat?.data?.type;
+    if (type === "infant" || type === "child") {
+        const typePill = document.createElement("span");
+        typePill.className = "status-pill status-pill--minor";
+        typePill.textContent = type === "infant" ? "INF" : "CHD";
+        meta.appendChild(typePill);
+    }
     if (!status || status === "none")
         return;
     const key = status.toUpperCase();
@@ -1103,6 +1196,144 @@ function setLegendPopoverState(open) {
 function isLegendPopoverOpen() {
     return legendPopover?.dataset.open === "true";
 }
+function refreshBulkOccupyHighlights() {
+    document.querySelectorAll("#seatgrid .seat").forEach((el) => {
+        const key = el.dataset.seatKey || "";
+        el.classList.toggle("bulk-picked", !!key && bulkOccupySelection.has(key));
+    });
+}
+function updateBulkOccupyUI() {
+    const L = I18N[store.config.lang || "EN"] || I18N.EN;
+    const toggle = document.getElementById("bulkOccupyToggle");
+    const apply = document.getElementById("bulkOccupyApply");
+    const clearBtn = document.getElementById("bulkOccupyClear");
+    const status = document.getElementById("bulkOccupyStatus");
+    const grid = document.getElementById("seatgrid");
+    const count = bulkOccupySelection.size;
+    if (grid)
+        grid.classList.toggle("bulk-occupy-mode", !!bulkOccupyMode);
+    if (toggle) {
+        const label = bulkOccupyMode
+            ? L.bulkOccCancel || "Cancel selection"
+            : L.bulkOccStart || "Mark multiple seats";
+        toggle.textContent = label;
+        toggle.title = label;
+        toggle.setAttribute("aria-pressed", bulkOccupyMode ? "true" : "false");
+    }
+    if (apply) {
+        const tpl = L.bulkOccApply || "Mark {n} seat(s) as occupied";
+        apply.textContent = (tpl || "").replace("{n}", String(Math.max(1, count || 1)));
+        apply.disabled = !bulkOccupyMode || count === 0;
+        apply.style.display = bulkOccupyMode ? "" : "none";
+    }
+    if (clearBtn) {
+        const lbl = L.bulkOccClear || "Clear selection";
+        clearBtn.textContent = lbl;
+        clearBtn.title = lbl;
+        clearBtn.disabled = !bulkOccupyMode || count === 0;
+        clearBtn.style.display = bulkOccupyMode ? "" : "none";
+    }
+    if (status) {
+        if (!bulkOccupyMode)
+            status.textContent = "";
+        else if (count === 0)
+            status.textContent =
+                L.bulkOccHint || "Click seats to select them, then apply.";
+        else {
+            const tpl = count === 1
+                ? L.bulkOccSelected || "{n} seat selected"
+                : L.bulkOccSelectedPlural ||
+                    L.bulkOccSelected ||
+                    "{n} seats selected";
+            status.textContent = (tpl || "").replace("{n}", String(count));
+        }
+    }
+    refreshBulkOccupyHighlights();
+}
+function setBulkOccupyMode(on) {
+    if (on === bulkOccupyMode) {
+        updateBulkOccupyUI();
+        return;
+    }
+    bulkOccupyMode = !!on;
+    if (!bulkOccupyMode) {
+        bulkOccupySelection.clear();
+    }
+    else if (movingFrom) {
+        movingFrom = null;
+        setMoveUI(false);
+    }
+    updateBulkOccupyUI();
+    updateSeatmapTitle();
+}
+function toggleBulkSeatSelection(key) {
+    if (!bulkOccupyMode)
+        return;
+    const [r, c] = parseSeatKey(key);
+    if (!r || !c)
+        return;
+    const seat = seatObj(r, c);
+    const status = document.getElementById("bulkOccupyStatus");
+    const L = I18N[store.config.lang || "EN"] || I18N.EN;
+    if (seat.occupied) {
+        if (status)
+            status.textContent = L.bulkOccBlocked || "Seat already occupied";
+        return;
+    }
+    if (bulkOccupySelection.has(key))
+        bulkOccupySelection.delete(key);
+    else
+        bulkOccupySelection.add(key);
+    updateBulkOccupyUI();
+}
+function clearBulkSelection() {
+    if (!bulkOccupyMode)
+        return;
+    bulkOccupySelection.clear();
+    updateBulkOccupyUI();
+}
+function applyBulkOccupySelection() {
+    if (!bulkOccupyMode)
+        return;
+    const count = bulkOccupySelection.size;
+    if (count === 0) {
+        setBulkOccupyMode(false);
+        updateSeatmapTitle();
+        return;
+    }
+    if (count >= BULK_OCC_CONFIRM_THRESHOLD) {
+        const L = I18N[store.config.lang || "EN"] || I18N.EN;
+        const msg = (L.bulkOccConfirm || "Confirm marking {n} seats as occupied?").replace("{n}", String(count));
+        if (!window.confirm(msg))
+            return;
+    }
+    const keys = Array.from(bulkOccupySelection);
+    for (const k of keys) {
+        const [r, c] = parseSeatKey(k);
+        if (!r || !c)
+            continue;
+        const seat = seatObj(r, c);
+        seat.occupied = true;
+        store.seats[k] = seat;
+        const el = document.querySelector(`#seatgrid .seat[data-seat-key="${k}"]`);
+        if (el)
+            el.classList.add("occupied");
+    }
+    save();
+    renderServiceFlow();
+    try {
+        rebuildHistSeatSelect?.();
+    }
+    catch (_) { }
+    setBulkOccupyMode(false);
+    updateSeatmapTitle();
+}
+function handleSeatGridClick(key) {
+    if (!bulkOccupyMode)
+        return false;
+    toggleBulkSeatSelection(key);
+    return true;
+}
 function fmtDateLocalized(iso) {
     const lang = (store?.config?.lang || "EN").toUpperCase();
     if (!iso)
@@ -1137,6 +1368,467 @@ function updateFlightDatePretty() {
     const input = document.getElementById("flightDate");
     if (span && input)
         span.textContent = fmtDateLocalized(input.value);
+}
+function currentFlightDateISO() {
+    const hidden = document.getElementById("flightDateISO");
+    if (hidden && hidden.value)
+        return String(hidden.value).trim();
+    const visible = document.getElementById("flightDate");
+    if (visible && visible.value)
+        return String(visible.value).trim();
+    return String(store?.title?.date || "").trim();
+}
+function updateMenuPreviewUI(result) {
+    ensureMenuDefaults();
+    const L = I18N[store.config.lang || "EN"] || I18N.EN;
+    const hasDirection = store.menu.direction === "outbound" || store.menu.direction === "inbound";
+    const hasService = store.menu.serviceType === "day" || store.menu.serviceType === "breakfast";
+    const hasDate = !!currentFlightDateISO();
+    const preview = document.getElementById("menuPreview");
+    if (preview)
+        preview.style.display = hasDirection && hasService ? "flex" : "none";
+    const opt1 = document.getElementById("menuAutoOption1");
+    const opt2 = document.getElementById("menuAutoOption2");
+    const opt1Title = document.getElementById("lblAutoOpt1");
+    const opt2Title = document.getElementById("lblAutoOpt2");
+    const status = document.getElementById("menuAutoStatus");
+    if (opt1Title)
+        opt1Title.textContent = L.lblViande || "Option 1";
+    if (opt2Title)
+        opt2Title.textContent = L.lblVege || "Option 2";
+    if (!hasDirection || !hasService) {
+        if (opt1)
+            opt1.textContent = "--";
+        if (opt2)
+            opt2.textContent = "--";
+        if (status) {
+            status.textContent =
+                L.menuSelectContext ||
+                    "Select outbound/inbound and service to load menu.";
+            status.dataset.state = "missing";
+        }
+        return;
+    }
+    if (!hasDate) {
+        if (opt1)
+            opt1.textContent = "--";
+        if (opt2)
+            opt2.textContent = "--";
+        if (status) {
+            status.textContent =
+                L.menuPickDate || "Select a flight date to load the menu.";
+            status.dataset.state = "missing";
+        }
+        return;
+    }
+    if (opt1)
+        opt1.textContent =
+            result?.option1 ||
+                store.menu.autoViandeLabel ||
+                store.menu.viandeLabel ||
+                L.lblViande ||
+                "Option 1";
+    if (opt2)
+        opt2.textContent =
+            result?.option2 ||
+                store.menu.autoVegeLabel ||
+                store.menu.vegeLabel ||
+                L.lblVege ||
+                "Option 2";
+    if (status) {
+        const state = result?.status || store.menu.autoStatus || "missing";
+        let txt = "";
+        if (state === "ok") {
+            txt = result?.note || store.menu.autoNote || "";
+        }
+        else if (state === "placeholder") {
+            txt =
+                result?.note ||
+                    store.menu.autoNote ||
+                    L.menuAutoPlaceholder ||
+                    "";
+        }
+        else {
+            txt =
+                result?.note ||
+                    store.menu.autoNote ||
+                    L.menuAutoMissing ||
+                    "";
+        }
+        status.textContent = txt;
+        status.dataset.state = state;
+    }
+}
+function refreshAutoMenu(saveAfter = false) {
+    ensureMenuDefaults();
+    const iso = currentFlightDateISO();
+    store.title.date = iso || "";
+    const hasDirection = store.menu.direction === "outbound" || store.menu.direction === "inbound";
+    const hasService = store.menu.serviceType === "day" || store.menu.serviceType === "breakfast";
+    const hasDate = !!iso;
+    if (!hasDirection || !hasService) {
+        store.menu.autoViandeLabel = "";
+        store.menu.autoVegeLabel = "";
+        store.menu.autoStatus = "missing";
+        store.menu.autoNote = "";
+        if (store.menu.mode === "auto") {
+            store.menu.viandeLabel = "";
+            store.menu.vegeLabel = "";
+        }
+        updateMenuPreviewUI();
+        updateNormalInfoPopup();
+        if (saveAfter)
+            save();
+        return;
+    }
+    if (!hasDate) {
+        store.menu.autoViandeLabel = "";
+        store.menu.autoVegeLabel = "";
+        store.menu.autoStatus = "missing";
+        store.menu.autoNote = "";
+        if (store.menu.mode === "auto") {
+            store.menu.viandeLabel = "";
+            store.menu.vegeLabel = "";
+        }
+        updateMenuPreviewUI();
+        updateNormalInfoPopup();
+        if (saveAfter)
+            save();
+        return;
+    }
+    const rotation = computeMenuRotationFromDate(iso);
+    store.menu.rotation = rotation;
+    const res = lookupAutoMenuLabels({
+        dateISO: iso,
+        rotation,
+        direction: store.menu.direction,
+        serviceType: store.menu.serviceType,
+        breakfastType: store.menu.breakfastType,
+        lang: store.config.lang,
+    });
+    store.menu.autoViandeLabel = res.option1 || "";
+    store.menu.autoVegeLabel = res.option2 || "";
+    store.menu.autoStatus = res.status;
+    store.menu.autoNote = res.note || "";
+    if (store.menu.mode === "auto") {
+        store.menu.viandeLabel =
+            res.option1 || store.menu.manualViandeLabel || store.menu.viandeLabel || "";
+        store.menu.vegeLabel =
+            res.option2 || store.menu.manualVegeLabel || store.menu.vegeLabel || "";
+    }
+    updateMenuPreviewUI(res);
+    updateNormalInfoPopup();
+    if (saveAfter)
+        save();
+}
+function syncMenuUI() {
+    ensureMenuDefaults();
+    const mode = store.menu.mode === "manual" ? "manual" : "auto";
+    const hasDirection = store.menu.direction === "outbound" || store.menu.direction === "inbound";
+    document.querySelectorAll(".menu-mode-btn").forEach((btn) => {
+        const target = btn.getAttribute("data-menu-mode") || "auto";
+        const active = target === mode;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+    const autoPanel = document.getElementById("menuAutoPanel");
+    const manualPanel = document.getElementById("menuManualPanel");
+    if (autoPanel) {
+        autoPanel.hidden = mode !== "auto";
+        autoPanel.style.display = mode === "auto" ? "flex" : "none";
+    }
+    if (manualPanel) {
+        manualPanel.hidden = mode !== "manual";
+        manualPanel.style.display = mode === "manual" ? "flex" : "none";
+    }
+    document.querySelectorAll("[data-menu-direction]").forEach((btn) => {
+        const active = btn.dataset.menuDirection === store.menu.direction;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+    document.querySelectorAll("[data-menu-service]").forEach((btn) => {
+        const active = btn.dataset.menuService === store.menu.serviceType;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+    const serviceRow = document.getElementById("menuServiceRow");
+    if (serviceRow)
+        serviceRow.style.display = hasDirection ? "flex" : "none";
+    document.querySelectorAll("[data-menu-service]").forEach((btn) => {
+        btn.disabled = !hasDirection;
+    });
+    const breakfastRow = document.getElementById("menuBreakfastRow");
+    if (breakfastRow) {
+        breakfastRow.style.display =
+            store.menu.serviceType === "breakfast" && hasDirection ? "" : "none";
+    }
+    const nightstop = document.getElementById("menuBreakfastNight");
+    const nightstopLabel = document.getElementById("lblMenuBreakfastType");
+    if (nightstop) {
+        nightstop.checked = store.menu.breakfastType === "nightstop";
+        const enableNightstop = store.menu.serviceType === "breakfast" &&
+            store.menu.direction === "inbound";
+        nightstop.disabled = !enableNightstop;
+        nightstop.style.display = enableNightstop ? "inline-block" : "none";
+        nightstop.style.visibility = enableNightstop ? "visible" : "hidden";
+        if (nightstopLabel) {
+            nightstopLabel.style.display = enableNightstop ? "inline-block" : "none";
+            nightstopLabel.style.visibility = enableNightstop ? "visible" : "hidden";
+        }
+        if (!enableNightstop) {
+            nightstop.checked = false;
+            store.menu.breakfastType = "standard";
+        }
+    }
+    const lv = document.getElementById("labelViande");
+    const lg = document.getElementById("labelVege");
+    if (lv) {
+        lv.value = store.menu.manualViandeLabel || "";
+        lv.disabled = mode === "auto";
+    }
+    if (lg) {
+        lg.value = store.menu.manualVegeLabel || "";
+        lg.disabled = mode === "auto";
+    }
+    const manualHint = document.getElementById("menuManualHint");
+    if (manualHint) {
+        const L = I18N[store.config.lang || "EN"] || I18N.EN;
+        manualHint.textContent =
+            L.menuManualHint !== undefined ? L.menuManualHint : "";
+    }
+    updateMenuPreviewUI();
+    updateNormalInfoPopup();
+}
+function updateNormalInfoPopup() {
+    const opt1 = document.getElementById("normalInfoOpt1");
+    const opt2 = document.getElementById("normalInfoOpt2");
+    const opt1Label = document.getElementById("normalInfoOpt1Label");
+    const opt2Label = document.getElementById("normalInfoOpt2Label");
+    const btn = document.getElementById("normalInfoBtn");
+    const popup = document.getElementById("normalInfoPopup");
+    if (!opt1 || !opt2)
+        return;
+    const L = I18N[store.config.lang || "EN"] || I18N.EN;
+    if (opt1Label) {
+        opt1Label.textContent = L.optNormalMeat || "Option 1";
+    }
+    if (opt2Label) {
+        opt2Label.textContent = L.optNormalVeg || "Option 2";
+    }
+    const mode = store.menu.mode === "manual" ? "manual" : "auto";
+    const manualOpt1 = (store.menu.manualViandeLabel || "").trim();
+    const manualOpt2 = (store.menu.manualVegeLabel || "").trim();
+    const autoOpt1 = (store.menu.viandeLabel ||
+        store.menu.autoViandeLabel ||
+        "").trim();
+    const autoOpt2 = (store.menu.vegeLabel ||
+        store.menu.autoVegeLabel ||
+        "").trim();
+    const hasLabels = mode === "manual"
+        ? !!(manualOpt1 || manualOpt2)
+        : !!(autoOpt1 || autoOpt2);
+    if (btn) {
+        btn.disabled = !hasLabels;
+    }
+    if (popup && !hasLabels) {
+        popup.hidden = true;
+        popup.style.display = "none";
+        btn?.setAttribute("aria-expanded", "false");
+    }
+    const manualFallback = L.optNormalMissing || "Option not set";
+    const opt1Txt = mode === "manual"
+        ? manualOpt1 || manualFallback
+        : store.menu.viandeLabel ||
+            store.menu.autoViandeLabel ||
+            store.menu.manualViandeLabel ||
+            L.optNormalMeat ||
+            "Option 1";
+    const opt2Txt = mode === "manual"
+        ? manualOpt2 || manualFallback
+        : store.menu.vegeLabel ||
+            store.menu.autoVegeLabel ||
+            store.menu.manualVegeLabel ||
+            L.optNormalVeg ||
+            "Option 2";
+    opt1.textContent = opt1Txt;
+    opt2.textContent = opt2Txt;
+}
+function initNormalInfoPopup() {
+    const btn = document.getElementById("normalInfoBtn");
+    const popup = document.getElementById("normalInfoPopup");
+    if (!btn || !popup)
+        return;
+    popup.hidden = true;
+    popup.style.display = "none";
+    btn.setAttribute("aria-expanded", "false");
+    updateNormalInfoPopup();
+    const close = () => {
+        popup.hidden = true;
+        popup.style.display = "none";
+        btn.setAttribute("aria-expanded", "false");
+    };
+    const open = () => {
+        updateNormalInfoPopup();
+        popup.hidden = false;
+        popup.style.display = "block";
+        btn.setAttribute("aria-expanded", "true");
+    };
+    btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const isOpen = btn.getAttribute("aria-expanded") === "true";
+        if (isOpen)
+            close();
+        else
+            open();
+    });
+    document.addEventListener("click", (ev) => {
+        if (popup.hidden)
+            return;
+        if (popup.contains(ev.target) || btn.contains(ev.target))
+            return;
+        close();
+    });
+}
+function initMenuSelectionAccordion() {
+    const acc = document.getElementById("menuSelectionAccordion");
+    const section = acc?.querySelector(".accordion__section");
+    const header = document.getElementById("menuSelectionHeader");
+    const body = document.getElementById("menuSelectionBody");
+    if (!acc || !section || !header || !body)
+        return;
+    const setState = (open) => {
+        section.dataset.open = open ? "true" : "false";
+        header.setAttribute("aria-expanded", open ? "true" : "false");
+        body.style.display = open ? "flex" : "none";
+    };
+    setState(true);
+    header.addEventListener("click", () => {
+        const isOpen = section.dataset.open === "true";
+        setState(!isOpen);
+    });
+    header.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            const isOpen = section.dataset.open === "true";
+            setState(!isOpen);
+        }
+    });
+}
+function setMenuMode(mode) {
+    ensureMenuDefaults();
+    store.menu.mode = mode === "manual" ? "manual" : "auto";
+    if (store.menu.mode === "manual") {
+        store.menu.viandeLabel = store.menu.manualViandeLabel || "";
+        store.menu.vegeLabel = store.menu.manualVegeLabel || "";
+    }
+    else {
+        refreshAutoMenu(false);
+    }
+    syncMenuUI();
+    save();
+}
+function initMenuControls() {
+    ensureMenuDefaults();
+    const tap = (el, handler) => {
+        if (!el)
+            return;
+        el.addEventListener("click", handler);
+        el.addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            handler();
+        }, { passive: false });
+    };
+    document.querySelectorAll("[data-menu-mode]").forEach((btn) => {
+        tap(btn, () => {
+            const mode = btn.dataset.menuMode || "auto";
+            setMenuMode(mode);
+        });
+    });
+    document.querySelectorAll("[data-menu-direction]").forEach((btn) => {
+        tap(btn, () => {
+            const dir = btn.dataset.menuDirection === "inbound"
+                ? "inbound"
+                : "outbound";
+            if (store.menu.direction === dir) {
+                store.menu.direction = null; // deselect
+                store.menu.serviceType = null;
+                store.menu.breakfastType = "standard";
+            }
+            else {
+                store.menu.direction = dir;
+                store.menu.serviceType = null;
+                store.menu.breakfastType = "standard";
+            }
+            refreshAutoMenu(true);
+            syncMenuUI();
+        });
+    });
+    document.querySelectorAll("[data-menu-service]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const svc = btn.dataset.menuService === "breakfast"
+                ? "breakfast"
+                : "day";
+            if (store.menu.serviceType === svc) {
+                store.menu.serviceType = null;
+            }
+            else {
+                store.menu.serviceType = svc;
+            }
+            if (store.menu.serviceType !== "breakfast") {
+                store.menu.breakfastType = "standard";
+            }
+            refreshAutoMenu(true);
+            syncMenuUI();
+        });
+    });
+    const nightstop = document.getElementById("menuBreakfastNight");
+    const handleNightstop = () => {
+        if (!nightstop || nightstop.disabled)
+            return;
+        store.menu.breakfastType = nightstop.checked ? "nightstop" : "standard";
+        refreshAutoMenu(true);
+        syncMenuUI();
+    };
+    nightstop?.addEventListener("change", handleNightstop);
+    const nightstopLabel = document.getElementById("lblMenuBreakfastType");
+    if (nightstop && nightstopLabel) {
+        addClickAndTouchListener(nightstopLabel, () => {
+            if (nightstop.disabled)
+                return;
+            nightstop.checked = !nightstop.checked;
+            handleNightstop();
+        });
+    }
+    const lv = document.getElementById("labelViande");
+    const lg = document.getElementById("labelVege");
+    const syncManualInputs = () => {
+        ensureMenuDefaults();
+        if (lv)
+            store.menu.manualViandeLabel = (lv.value || "").trim();
+        if (lg)
+            store.menu.manualVegeLabel = (lg.value || "").trim();
+        if (store.menu.mode === "manual") {
+            store.menu.viandeLabel = store.menu.manualViandeLabel || "";
+            store.menu.vegeLabel = store.menu.manualVegeLabel || "";
+        }
+        save();
+        updateNormalInfoPopup();
+    };
+    lv?.addEventListener("input", syncManualInputs);
+    lg?.addEventListener("input", syncManualInputs);
+    lv?.addEventListener("change", syncManualInputs);
+    lg?.addEventListener("change", syncManualInputs);
+    const onDateChange = () => {
+        const iso = currentFlightDateISO();
+        store.title.date = iso || "";
+        refreshAutoMenu(true);
+    };
+    document.getElementById("flightDate")?.addEventListener("change", onDateChange);
+    document
+        .getElementById("flightDateISO")
+        ?.addEventListener("change", onDateChange);
+    refreshAutoMenu(false);
+    syncMenuUI();
 }
 // --- I18N ---
 // I18N  DOM bindings (slecteur  cl)
@@ -1177,6 +1869,18 @@ const I18N_BINDINGS = [
     ["lblLayout", "lblLayout"],
     ["lblRows", "lblRows"],
     ["secMenuTitle", "secMenuTitle"],
+    ["menuModeAuto", "menuModeAuto"],
+    ["menuModeManual", "menuModeManual"],
+    ["menuDirOutbound", "menuOutbound"],
+    ["menuDirInbound", "menuInbound"],
+    ["menuServiceDay", "menuDayService"],
+    ["menuServiceBreakfast", "menuBreakfast"],
+    ["lblMenuBreakfastType", "menuBreakfastNight"],
+    ["menuBreakfastStandard", "menuBreakfastStandard"],
+    ["menuBreakfastNight", "menuBreakfastNight"],
+    ["menuSelectionHeader", "menuSelection"],
+    ["lblAutoOpt1", "lblViande"],
+    ["lblAutoOpt2", "lblVege"],
     ["lblViande", "lblViande"],
     ["lblVege", "lblVege"],
     ["hdrInventaire", "hdrInventaire"],
@@ -1483,6 +2187,12 @@ function applyI18n() {
         if (k && L[k] !== undefined)
             el.textContent = L[k];
     });
+    const manualHint = document.getElementById("menuManualHint");
+    if (manualHint) {
+        manualHint.textContent =
+            L.menuManualHint !== undefined ? L.menuManualHint : "";
+    }
+    updateMenuPreviewUI();
     // --- Lgendes des GROS boutons (grille boissons) ---
     (function setBigDrinkCaps() {
         const L = I18N[store.config.lang || "EN"] || I18N.EN;
@@ -1593,6 +2303,8 @@ function applyI18n() {
         legendBtn.title = label;
         legendBtn.setAttribute("aria-label", label);
     }
+    if (typeof updateBulkOccupyUI === "function")
+        updateBulkOccupyUI();
     const sp = document.getElementById("spmlAddCode");
     if (sp)
         sp.title =
@@ -1601,6 +2313,17 @@ function applyI18n() {
                 : lang === "DE"
                     ? "SPML-Code hinzuf�gen"
                     : "Add SPML code";
+    const preSelect = document.getElementById("preAddCode");
+    if (preSelect) {
+        const choosePreorder = L.preAddSelectPlaceholder ||
+            (lang === "FR"
+                ? "Choisir un code"
+                : lang === "DE"
+                    ? "Code auswaehlen"
+                    : "Choose a code");
+        preSelect.title = choosePreorder;
+        preSelect.setAttribute("aria-label", choosePreorder);
+    }
     const pre = document.getElementById("preAddLabel");
     if (pre)
         pre.placeholder = L.preAddPlaceholder || "e.g., Gluten-free pasta";
@@ -1719,6 +2442,7 @@ function applyI18n() {
 }
 function renderSeatmap() {
     const g = $("#seatgrid");
+    g.classList.toggle("bulk-occupy-mode", !!bulkOccupyMode);
     g.innerHTML = "";
     const total = store.config.rowsBiz || 0; // **Seulement CCL**
     const rCols = rightCols(); // ["C","A"] ou ["C","B","A"]
@@ -1755,11 +2479,15 @@ function renderSeatmap() {
 function renderSeatCell(r, col) {
     const seat = seatObj(r, col);
     const d = document.createElement("div");
+    const seatKey = keyFor(r, col);
     d.className = "seat bus";
+    d.dataset.seatKey = seatKey;
     if (seat.occupied)
         d.classList.add("occupied");
     if (seat.sleep)
         d.classList.add("sleeping");
+    if (bulkOccupyMode && bulkOccupySelection.has(seatKey))
+        d.classList.add("bulk-picked");
     const L = I18N[store.config.lang || "EN"] || I18N.EN;
     const mini = document.createElement("div");
     mini.className = "mini";
@@ -1831,7 +2559,7 @@ function renderSeatCell(r, col) {
         appendSeatFlag(ib, "flag-child", L.lgChild || L.mdChild || "Child", "CHD");
     }
     if (seat?.served && seat.served.trayCleared) {
-        // Cleared marker intentionally hidden
+        // The cleared badge is intentionally hidden (pax no longer needs a pill)
     }
     // Sleep emoji removed: seat greyed out is enough. Keeping a later marker only.
     if (seat.serveLaterAt) {
@@ -1847,15 +2575,19 @@ function renderSeatCell(r, col) {
         if (document.activeElement && document.activeElement.blur) {
             document.activeElement.blur();
         }
-        onSeatClick(keyFor(r, col));
+        if (handleSeatGridClick(seatKey))
+            return;
+        onSeatClick(seatKey);
     });
     d.addEventListener("pointerup", (e) => {
         if (store.clientView)
             return;
-        // vite double-excution si dj pass par touchstart
-        if (e.pointerType === "mouse")
+        // vite double-excution : on laisse les touches aux handlers touch/click
+        if (e.pointerType !== "mouse")
             return;
-        onSeatClick(keyFor(r, col));
+        if (handleSeatGridClick(seatKey))
+            return;
+        onSeatClick(seatKey);
     }, { passive: true });
     const flt = currentSeatFilter();
     if (flt === "toServe") {
@@ -2159,21 +2891,42 @@ function refreshBadges() {
     }
     // SPML add select
     const addSel = $("#spmlAddCode");
-    if (!addSel)
-        return;
-    const prevVal = addSel?.value || "";
-    const addTxt = lang === "FR" ? "Choisir" : lang === "DE" ? "Wählen" : "Choose";
-    addSel.innerHTML = `<option value="">${addTxt}</option>`;
-    // (pas de refocus ici)
-    for (const c of SPML_CODES) {
-        const o = document.createElement("option");
-        o.value = c;
-        o.textContent = c;
-        addSel.appendChild(o);
+    if (addSel) {
+        const prevVal = addSel?.value || "";
+        const addTxt = lang === "FR" ? "Choisir" : lang === "DE" ? "Waehlen" : "Choose";
+        addSel.innerHTML = `<option value="">${addTxt}</option>`;
+        // (pas de refocus ici)
+        for (const c of SPML_CODES) {
+            const o = document.createElement("option");
+            o.value = c;
+            o.textContent = c;
+            addSel.appendChild(o);
+        }
+        // restaure la selection si encore presente
+        if ([...addSel.options].some((o) => o.value === prevVal)) {
+            addSel.value = prevVal;
+        }
     }
-    // restaure la slection si encore prsente
-    if ([...addSel.options].some((o) => o.value === prevVal)) {
-        addSel.value = prevVal;
+    // Pre-order add select
+    const preAddSelect = $("#preAddCode");
+    if (preAddSelect) {
+        const prevVal = preAddSelect?.value || "";
+        const addTxt = (I18N[lang]?.preAddSelectPlaceholder || "").trim() ||
+            (lang === "FR"
+                ? "Choisir un code"
+                : lang === "DE"
+                    ? "Code auswaehlen"
+                    : "Choose a code");
+        preAddSelect.innerHTML = `<option value="">${addTxt}</option>`;
+        for (const c of PREORDER_CODES) {
+            const o = document.createElement("option");
+            o.value = c;
+            o.textContent = c;
+            preAddSelect.appendChild(o);
+        }
+        if ([...preAddSelect.options].some((o) => o.value === prevVal)) {
+            preAddSelect.value = prevVal;
+        }
     }
     renderSpmlInventory(minusLabel, plusLabel);
     renderPreInventory(minusLabel, plusLabel);
@@ -3869,6 +4622,11 @@ function startSeatMove(fromKey) {
 }
 // ESC pour annuler le mode dplacement
 document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && bulkOccupyMode) {
+        setBulkOccupyMode(false);
+        updateSeatmapTitle();
+        return;
+    }
     if (e.key === "Escape" && movingFrom) {
         movingFrom = null;
         setMoveUI(false);
@@ -3932,6 +4690,10 @@ function performMoveOrSwap(fromKey, toKey) {
 function onSeatClick(key) {
     // cl normalise (ex: "12A")
     key = (key || "").toUpperCase();
+    if (bulkOccupyMode) {
+        toggleBulkSeatSelection(key);
+        return;
+    }
     //  Mode dplacement actif ?
     if (movingFrom) {
         const from = movingFrom;
@@ -5212,7 +5974,11 @@ function mealChoiceTagHTML(d) {
     const nm = (d.normalMeal || "").trim(); // "viande" | "vege" | "plateau" | ""
     if (!nm)
         return "";
-    const emoji = nm === "viande" ? "1" : nm === "vege" ? "2" : ""; // plateau =
+    if (nm === "plateau") {
+        const L = I18N[store.config.lang || "EN"] || I18N.EN;
+        return `<span class="tag">${escapeHTML(L.trayShort || "Tray")}</span>`;
+    }
+    const emoji = nm === "viande" ? "1" : nm === "vege" ? "2" : "";
     return `<span class="tag">${emoji}</span>`;
 }
 function mealHistoryLabel(d, L) {
@@ -5304,6 +6070,57 @@ function attachFlowSwipeHandler(row, seatKey, phase) {
         touchStartX = null;
         swipeDx = null;
     }, { passive: true });
+}
+const FLOW_CONFIRM_ARMED = new Set();
+function attachFlowTapConfirm(row, seatKey, phase, action) {
+    let armed = false;
+    let armTimer = null;
+    const confirmEl = row.querySelector(".flow-serve-confirm") ||
+        (() => {
+            const el = document.createElement("div");
+            el.className = "flow-confirm flow-serve-confirm";
+            el.textContent = (I18N[store.config.lang || "EN"] || I18N.EN).flowServeTag || "Serve";
+            row.appendChild(el);
+            return el;
+        })();
+    const key = seatKey || row.dataset.key || "";
+    if (key && FLOW_CONFIRM_ARMED.has(key)) {
+        armed = true;
+        confirmEl.classList.add("is-visible");
+    }
+    const reset = () => {
+        armed = false;
+        confirmEl.classList.remove("is-visible");
+        if (key)
+            FLOW_CONFIRM_ARMED.delete(key);
+        if (armTimer) {
+            clearTimeout(armTimer);
+            armTimer = null;
+        }
+    };
+    const confirm = () => {
+        if (!seatKey)
+            return;
+        if (action)
+            action(seatKey);
+        else
+            markDrinkDelivered(seatKey, phase);
+        reset();
+    };
+    row.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        if (!armed) {
+            armed = true;
+            confirmEl.classList.add("is-visible");
+            if (key)
+                FLOW_CONFIRM_ARMED.add(key);
+            if (armTimer)
+                clearTimeout(armTimer);
+            armTimer = window.setTimeout(reset, 3000);
+            return;
+        }
+        confirm();
+    });
 }
 function markDrinkDelivered(seatKey, phase) {
     const [r, c] = (typeof parseSeatKey === "function"
@@ -5514,9 +6331,9 @@ function renderServiceFlow() {
                     row.innerHTML = `
           <div class="flow-seat">${ev.seat || ""}</div>
           <div class="flow-desc">${tags.join(" ")}${subHtml}</div>
-          <div class="tag">${L.flowTaken || "Taken"}</div>
+          <div class="flow-confirm flow-serve-confirm">${L.flowServeTag || "Serve"}</div>
         `;
-                    attachFlowSwipeHandler(row, ev.seat || "", store.phase);
+                    attachFlowTapConfirm(row, ev.seat || "", store.phase);
                     boxLater.appendChild(row);
                 }
             }
@@ -5545,6 +6362,10 @@ function renderServiceFlow() {
                         tags.push('<span class="tag pad">PAD</span>');
                     else if (d.status === "FTL")
                         tags.push('<span class="tag ftl">FTL</span>');
+                    if (d.type === "infant")
+                        tags.push('<span class="tag inf">INF</span>');
+                    else if (d.type === "child")
+                        tags.push('<span class="tag chd">CHD</span>');
                     if (d.sleep)
                         tags.push(`<span class="tag sleep">${SEAT_ICONS.sleep}</span>`);
                     const row = document.createElement("div");
@@ -5587,6 +6408,10 @@ function renderServiceFlow() {
                 tags.push('<span class="tag pad">PAD</span>');
             else if (d.status === "FTL")
                 tags.push('<span class="tag ftl">FTL</span>');
+            if (d.type === "infant")
+                tags.push('<span class="tag inf">INF</span>');
+            else if (d.type === "child")
+                tags.push('<span class="tag chd">CHD</span>');
             if (d.sleep)
                 tags.push(`<span class="tag sleep">${SEAT_ICONS.sleep}</span>`);
             const row = document.createElement("div");
@@ -5604,15 +6429,10 @@ function renderServiceFlow() {
             row.innerHTML = `
   <div class="flow-seat">${item.key}</div>
   <div class="flow-desc">${tags.join(" ")}</div>
-  <div class="tag">${L.flowServeTag || "Serve"}</div>
+  <div class="flow-confirm flow-serve-confirm">${L.flowServeTag || "Serve"}</div>
   ${drinkLineNow}
 `;
-            if (store.phase === "repas") {
-                attachFlowSwipeHandler(row, item.key, "repas");
-            }
-            else {
-                row.addEventListener("click", () => onSeatClick(item.key));
-            }
+            attachFlowTapConfirm(row, item.key, store.phase);
             boxNow.appendChild(row);
         }
     }
@@ -5640,6 +6460,10 @@ function renderServiceFlow() {
                     tags.push('<span class="tag pad">PAD</span>');
                 else if (d.status === "FTL")
                     tags.push('<span class="tag ftl">FTL</span>');
+                if (d.type === "infant")
+                    tags.push('<span class="tag inf">INF</span>');
+                else if (d.type === "child")
+                    tags.push('<span class="tag chd">CHD</span>');
                 if (d.sleep)
                     tags.push('<span class="tag sleep"></span>');
                 const row = document.createElement("div");
@@ -5652,9 +6476,13 @@ function renderServiceFlow() {
                 row.innerHTML = `
           <div class="flow-seat">${item.key}</div>
           <div class="flow-desc">${tags.join(" ")}</div>
-          <div class="tag"> ${L.flowClearTag || " dbarrasser"}</div>
+          <div class="flow-confirm flow-serve-confirm">${L.flowClearTag || "D\u00e9barrasser"}</div>
         `;
-                attachFlowSwipeHandler(row, item.key, "clear");
+                attachFlowTapConfirm(row, item.key, "clear", (key) => {
+                    const [r, c] = parseSeatKey(key);
+                    const seat = r && c ? seatObj(r, c) : null;
+                    markTrayClearedFromFlow(key, seat);
+                });
                 boxClear.appendChild(row);
             }
         }
@@ -5667,6 +6495,9 @@ function initLangButtons() {
     const menu = document.getElementById("langMenu");
     if (!wrap || !active || !menu)
         return;
+    wrap.style.pointerEvents = "auto";
+    wrap.style.position = "relative";
+    wrap.style.zIndex = "600";
     const flagMap = {
         EN: String.fromCodePoint(0x1f1ec, 0x1f1e7),
         DE: String.fromCodePoint(0x1f1e9, 0x1f1ea),
@@ -5691,15 +6522,35 @@ function initLangButtons() {
     };
     decorateMenuButtons();
     setActiveLabel();
+    const setMenuOpen = (open) => {
+        wrap.classList.toggle("open", open);
+        active.setAttribute("aria-expanded", String(open));
+        menu.style.display = open ? "flex" : "none";
+        if (open) {
+            menu.querySelectorAll("[data-lang]").forEach((b) => {
+                b.classList.toggle("primary", b.dataset.lang === (store.config.lang || "EN"));
+            });
+        }
+    };
     // Ouvre/ferme le menu
     active.addEventListener("click", (e) => {
         e.stopPropagation();
-        const open = wrap.classList.toggle("open");
-        active.setAttribute("aria-expanded", String(open));
-        // highlight loption courante
-        menu.querySelectorAll("[data-lang]").forEach((b) => {
-            b.classList.toggle("primary", b.dataset.lang === (store.config.lang || "EN"));
-        });
+        setMenuOpen(!wrap.classList.contains("open"));
+    });
+    // Empche la fermeture immdiate quand on clique dans le menu
+    menu.addEventListener("click", (e) => e.stopPropagation());
+    const closeOnOutside = (e) => {
+        if (!wrap.classList.contains("open"))
+            return;
+        if (wrap.contains(e.target))
+            return;
+        setMenuOpen(false);
+    };
+    document.addEventListener("click", closeOnOutside);
+    document.addEventListener("pointerdown", closeOnOutside);
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape")
+            setMenuOpen(false);
     });
     // Choix dune langue
     menu.querySelectorAll("[data-lang]").forEach((btn) => {
@@ -5720,16 +6571,8 @@ function initLangButtons() {
             }
             setActiveLabel();
             decorateMenuButtons();
-            wrap.classList.remove("open");
-            active.setAttribute("aria-expanded", "false");
+            setMenuOpen(false);
         });
-    });
-    // Fermer en cliquant ailleurs
-    document.addEventListener("click", (e) => {
-        if (!wrap.contains(e.target)) {
-            wrap.classList.remove("open");
-            active.setAttribute("aria-expanded", "false");
-        }
     });
 }
 // ----- Thme jour/nuit -----
@@ -5823,7 +6666,9 @@ document
     ?.addEventListener("change", (e) => e.target.blur());
 $("#preAddBtn").addEventListener("click", () => {
     const L = I18N[store.config.lang || "EN"] || I18N.EN;
-    const label = ($("#preAddLabel").value || "").trim();
+    const selected = ($("#preAddCode")?.value || "").trim();
+    const manualLabel = ($("#preAddLabel").value || "").trim();
+    const label = (selected || manualLabel).trim();
     const qty = Math.max(1, parseInt($("#preAddQty").value || "1", 10));
     if (!label) {
         alert(L.preAddLabelRequired);
@@ -5831,8 +6676,14 @@ $("#preAddBtn").addEventListener("click", () => {
     }
     store.inventory.pre[label] = (store.inventory.pre[label] || 0) + qty;
     $("#preAddLabel").value = "";
+    const preSelect = $("#preAddCode");
+    if (preSelect)
+        preSelect.value = "";
     save();
 });
+document
+    .getElementById("preAddCode")
+    ?.addEventListener("change", (e) => e.target.blur());
 document.querySelectorAll("#filterTabs .subtab[data-filter]").forEach((btn) => btn.addEventListener("click", () => {
     if (btn.classList.contains("active"))
         return;
@@ -5844,6 +6695,21 @@ document.querySelectorAll("#filterTabs .subtab[data-filter]").forEach((btn) => b
     renderServiceFlow(); //  AJOUT
 }));
 setActiveFilterTab(currentSeatFilter());
+const bulkToggleBtn = document.getElementById("bulkOccupyToggle");
+const bulkApplyBtn = document.getElementById("bulkOccupyApply");
+const bulkClearBtn = document.getElementById("bulkOccupyClear");
+if (bulkToggleBtn) {
+    bulkToggleBtn.addEventListener("click", () => {
+        setBulkOccupyMode(!bulkOccupyMode);
+    });
+}
+if (bulkApplyBtn) {
+    bulkApplyBtn.addEventListener("click", () => applyBulkOccupySelection());
+}
+if (bulkClearBtn) {
+    bulkClearBtn.addEventListener("click", () => clearBulkSelection());
+}
+updateBulkOccupyUI();
 if (legendPopover && legendButton && legendSeatmapContainer) {
     setLegendPopoverState(false);
     legendPopover.addEventListener("click", (event) => {
@@ -6028,8 +6894,20 @@ function performFullReset() {
     }
     store.inventory.hot_special = 0;
     store.inventory.pre = {};
+    ensureMenuDefaults();
+    store.menu.mode = "auto";
+    store.menu.direction = null;
+    store.menu.serviceType = null;
+    store.menu.breakfastType = "standard";
+    store.menu.rotation = null;
     store.menu.viandeLabel = "";
     store.menu.vegeLabel = "";
+    store.menu.manualViandeLabel = "";
+    store.menu.manualVegeLabel = "";
+    store.menu.autoViandeLabel = "";
+    store.menu.autoVegeLabel = "";
+    store.menu.autoStatus = "";
+    store.menu.autoNote = "";
     store.reminders = [];
     store.history = [];
     for (const k of Object.keys(store.seats)) {
@@ -6042,12 +6920,8 @@ function performFullReset() {
         .querySelectorAll("input[type='text'], textarea")
         .forEach((el) => (el.value = ""));
     // 4) Raligne les libells visibles avec store.menu
-    const lv = document.getElementById("labelViande");
-    const lg = document.getElementById("labelVege");
-    if (lv)
-        lv.value = "";
-    if (lg)
-        lg.value = "";
+    syncMenuUI();
+    refreshAutoMenu(false);
     // 5) Remet le chip de phase
     setActivePhaseTab("fiche");
     // 6) Re-render
@@ -6219,16 +7093,24 @@ function migrateHistoryToEvents() {
     renderSeatmap();
     if (disp)
         disp.textContent = store.config.rowsBiz || 0;
-    $("#labelViande").value = store.menu.viandeLabel || "";
-    $("#labelVege").value = store.menu.vegeLabel || "";
-    $("#labelViande").addEventListener("change", () => {
-        store.menu.viandeLabel = $("#labelViande").value;
-        save();
-    });
-    $("#labelVege").addEventListener("change", () => {
-        store.menu.vegeLabel = $("#labelVege").value;
-        save();
-    });
+    ensureMenuDefaults();
+    if (!store.menu.manualViandeLabel && store.menu.viandeLabel) {
+        store.menu.manualViandeLabel = store.menu.viandeLabel;
+    }
+    if (!store.menu.manualVegeLabel && store.menu.vegeLabel) {
+        store.menu.manualVegeLabel = store.menu.vegeLabel;
+    }
+    // start with no direction to force user choice
+    if (store.menu.direction !== "inbound" && store.menu.direction !== "outbound") {
+        store.menu.direction = null;
+    }
+    store.menu.serviceType =
+        store.menu.serviceType === "day" || store.menu.serviceType === "breakfast"
+            ? store.menu.serviceType
+            : null;
+    initMenuSelectionAccordion();
+    initMenuControls();
+    initNormalInfoPopup();
     document.body.classList.toggle("client", store.clientView);
     // Aligne le chip actif sur la phase rellement stocke
     setActivePhaseTab(store.phase);
@@ -6435,8 +7317,9 @@ document.addEventListener("DOMContentLoaded", () => {
 document.getElementById("saveSnapshot")?.addEventListener("click", () => {
     // construit un nom de fichier lisible
     const fn = (store?.title?.flightNo || "no-flight").replace(/\W+/g, "_");
-    const d = (store?.title?.date || "no-date").replace(/\W+/g, "_");
-    const name = `SWISS_ServiceFlow-${fn}-${d}.json`;
+    const now = new Date();
+    const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
+    const name = `${fn || "flight"}-${stamp}.json`;
     // contenu : l'tat complet (store)
     const blob = new Blob([JSON.stringify(store, null, 2)], {
         type: "application/json",
@@ -6603,12 +7486,18 @@ export function syncUIToStoreForExport() {
     // Libells Option 1 / Option 2 (les intituls dont tu parles)
     const lv = document.getElementById("labelViande");
     const lg = document.getElementById("labelVege");
-    if (!store.menu)
-        store.menu = {};
+    ensureMenuDefaults();
     if (lv)
-        store.menu.viandeLabel = (lv.value || "").trim();
+        store.menu.manualViandeLabel = (lv.value || "").trim();
     if (lg)
-        store.menu.vegeLabel = (lg.value || "").trim();
+        store.menu.manualVegeLabel = (lg.value || "").trim();
+    if (store.menu.mode === "manual") {
+        store.menu.viandeLabel = store.menu.manualViandeLabel || "";
+        store.menu.vegeLabel = store.menu.manualVegeLabel || "";
+    }
+    else {
+        refreshAutoMenu(false);
+    }
 }
 export function initFlightFormsLegacy() {
     if (typeof initFlightDatePicker === "function")
@@ -6649,4 +7538,4 @@ export function persistCurrentState() {
     syncUIToStoreForExport();
     save();
 }
-export { store, SPML_CODES, ensureSeatShape, seatObj, storageKey, sumSPML, sumPRE, rightCols, };
+export { store, SPML_CODES, PREORDER_CODES, ensureSeatShape, seatObj, storageKey, sumSPML, sumPRE, rightCols, };

@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 export const I18N = {
   EN: {
     // =========================
@@ -6,12 +6,12 @@ export const I18N = {
     // =========================
     flight: "Flight",
     date: "Date",
+    flightPlaceholder: "e.g. LX2810",
     saveTitle: "Save",
     reset: "Reset",
     client: "Client mode",
     crew: "Crew mode",
     lblLang: "Language",
-    flightPlaceholder: "e.g. LX2810",
     exportJSON: "Export JSON",
     importJSON: "Import",
     exportPNG: "PNG",
@@ -40,7 +40,7 @@ export const I18N = {
     flowAperoTakenTitle: "Orders taken ⬇️",
     flowTaken: "Taken",
     flowEmptyTaken: "No orders taken yet",
-    flowTCTakenTitle: "Tea & coffee taken ⬇️",
+    flowTCTakenTitle: "Orders taken ⬇️",
     flowTakeOrder: "Order",
     flowServeTag: "Serve",
     flowClearTag: "To clear",
@@ -58,6 +58,55 @@ export const I18N = {
     lblLayout: "Aircraft",
     lblRows: "Rows",
     secMenuTitle: "Menu",
+    menuModeAuto: "Auto",
+    menuModeManual: "Manual",
+    menuOutbound: "Outbound",
+    menuInbound: "Inbound",
+    menuDayService: "Day service",
+    menuBreakfast: "Breakfast",
+    menuBreakfastType: "Breakfast type",
+    menuBreakfastStandard: "Normal",
+    menuBreakfastNight: "Out of night stop",
+    menuSelectContext: "Select outbound/inbound and service to load menu.",
+    menuPickDate: "Select a flight date to load the menu.",
+    menuSelection: "Menu selection",
+    menuAutoPlaceholder: "Placeholder menu until DB is provided.",
+    menuAutoMissing: "Menu data pending. You can switch to manual mode.",
+    // AUTO MENU (dishes)
+    autoMenu_coldCutsPlatter: "SWISS Saveurs Cold Cuts Platter",
+    autoMenu_granolaMilk: "Granola with milk",
+    autoMenu_nightstopNote: "Out of nightstop menu",
+    autoMenu_gruyereEggRoll:
+      "Gruyère egg roll with mountain herbs, sautéed shiitake mushrooms and tomatoes",
+    autoMenu_appenzellerOmelette:
+      "Omelette with Appenzeller cheese, rösti, spinach and cherry tomatoes",
+    autoMenu_beefTenderloinPorcini:
+      "Grilled beef tenderloin with porcini mushroom sauce, potato gratin and broccoli",
+    autoMenu_truffleTriangoli:
+      "Truffle triangoli with white wine truffle sauce, spinach and Sbrinz cheese",
+    autoMenu_chickenMascarponePolenta:
+      "Chicken breast with jus de volaille, mascarpone polenta, red cabbage and brussels sprouts",
+    autoMenu_trofieMushroom:
+      "Trofie pasta with mushroom cream sauce, glazed salsify, roasted leek, pumpkin and pumpkin seeds",
+    autoMenu_crepeRicottaSpinach:
+      "Savoury crêpe with ricotta and spinach, grilled vegetables, pan-fried potatoes",
+    autoMenu_scrambledEngelberg:
+      "Scrambled eggs with Engelberg Abbey mountain cheese and spinach, potato rösti",
+    autoMenu_beefBourguignonPuree:
+      "Beef bourguignon, potato purée and glazed root vegetables",
+    autoMenu_cheeseSpaetzleOnionApple:
+      "Cheese spaetzle with fried onions and apple slices",
+    autoMenu_eggSouffleMushroom:
+      "Egg soufflé with tomatoes and cheese, mushroom sauce and broccoli",
+    autoMenu_asparagusOmelette:
+      "Omelette with asparagus and sauce hollandaise, parsley potatoes",
+    autoMenu_sauteedChickenPolenta:
+      "Sauteed chicken breast with jus, mascarpone polenta, brussels sprouts, braised red cabbage",
+    autoMenu_gratinatedCheeseSpaetzle:
+      "Gratinated cheese spaetzle with apple and fried onions",
+    autoMenu_pendingNote:
+      "Menu data will be loaded automatically when provided.",
+    autoMenu_outOfRotation: "Selected date is outside defined rotations.",
     lblViande: "Option 1",
     lblVege: "Option 2",
     hdrInventaire: "Inventory",
@@ -96,7 +145,7 @@ export const I18N = {
     mdAperoNotes: "Drink / aperitif notes",
     mdTCNotes: "Tea & coffee notes",
     // Meal
-    serveAperitif: "Order drink",
+    serveAperitif: "Order aperitif",
     mdMeal: "Meal",
     mdNormal: "Normal choice",
     optNormalMeat: "Option 1",
@@ -135,12 +184,12 @@ export const I18N = {
     // Tea & Coffee
     tcCH: "Swiss",
     tcForeign: "Foreign",
-    serveTC: "Order drink",
+    serveTC: "Serve Tea & Coffee",
     serveMealDrink: "Order drink",
     histTcServed: "Tea & Coffee served at",
     histMealDrinkServed: "Meal drink ordered by",
-    serveNone: "No drink",
     serveNoFood: "No food",
+    serveNone: "No drink",
     // =========================
     // LEGEND
     // =========================
@@ -152,6 +201,15 @@ export const I18N = {
     lgTogether: "🤝 Eat together",
     legendShow: "Show legend",
     legendHide: "Hide legend",
+    bulkOccStart: "Mark multiple seats",
+    bulkOccApply: "Mark {n} seat(s) as occupied",
+    bulkOccClear: "Clear selection",
+    bulkOccHint: "Click seats to select them, then apply.",
+    bulkOccSelected: "{n} seat selected",
+    bulkOccSelectedPlural: "{n} seats selected",
+    bulkOccCancel: "Cancel selection",
+    bulkOccConfirm: "Confirm marking {n} seats as occupied?",
+    bulkOccBlocked: "Seat already occupied",
     // =========================
     // ALERTS / MESSAGES
     // =========================
@@ -171,16 +229,14 @@ export const I18N = {
     histTitleSet: "Title set:",
     histApServed: "Aperitif served at",
     histApOrdered: "Aperitif ordered at",
+    histMealDrinkOrdered: "Meal drinks ordered at",
+    histTcOrdered: "Tea & coffee ordered at",
     histApCanceled: "Aperitif canceled for",
     histMealServed: "Main served at",
-    histMealDrinkOrdered: "Meal drinks ordered at",
-    histTcServed: "Tea & coffee served at",
-    histTcOrdered: "Tea & coffee ordered at",
-    histMealDrinkOrdered: "Meal drinks ordered at",
     histCanceled: "Service canceled for",
     resetDone: "Flight reset.",
     remindersTitle: "Upcoming reminders",
-    remindServe: "🛎️ Reminder: serve",
+    remindServe: "\u{1F514} Reminder: serve",
     histViewLabel: "View",
     histScope_all: "All events",
     histScope_seat: "By seat",
@@ -190,11 +246,10 @@ export const I18N = {
     histAscLbl: "Oldest first",
     histType_mealDrinkServed: "Meal drink served",
     histType_apServed: "Aperitif served",
-    histType_apOrdered: "Aperitif ordered",
     histType_tcServed: "Tea & Coffee served",
-    histType_tcOrdered: "Tea & Coffee ordered",
-    histType_tcOrdered: "Tea & Coffee ordered",
     histType_mealServed: "Main served",
+    histType_apOrdered: "Aperitif ordered",
+    histType_tcOrdered: "Tea & Coffee ordered",
     histType_apCanceled: "Aperitif canceled",
     histType_serviceCanceled: "Service canceled",
     histType_trayCleared: "Tray cleared",
@@ -325,12 +380,12 @@ export const I18N = {
     // =========================
     flight: "Vol",
     date: "Date",
+    flightPlaceholder: "ex : LX2810",
     saveTitle: "Enregistrer",
     reset: "Réinitialiser",
     client: "Mode client",
     crew: "Mode équipage",
     lblLang: "Langue",
-    flightPlaceholder: "ex : LX2810",
     exportJSON: "Export JSON",
     importJSON: "Importer",
     exportPNG: "PNG",
@@ -364,7 +419,7 @@ export const I18N = {
     flowAperoTakenTitle: "Commandes prises ⬇️",
     flowTaken: "Pris",
     flowEmptyTaken: "Aucune commande prise",
-    flowTCTakenTitle: "Thé & café pris ⬇️",
+    flowTCTakenTitle: "Commandes prises ⬇️",
     flowTakeOrder: "Commande",
     flowServeTag: "Servir",
     flowClearTag: "À débarrasser",
@@ -382,6 +437,56 @@ export const I18N = {
     lblLayout: "Appareil",
     lblRows: "Rangées",
     secMenuTitle: "Menu",
+    menuModeAuto: "Auto",
+    menuModeManual: "Manuel",
+    menuOutbound: "Aller",
+    menuInbound: "Retour",
+    menuDayService: "Service de jour",
+    menuBreakfast: "Petit-déjeuner",
+    menuBreakfastType: "Type de petit-déjeuner",
+    menuBreakfastStandard: "Standard",
+    menuBreakfastNight: "Retour de night stop",
+    menuSelectContext:
+      "Sélectionne le sens et le service pour afficher le menu.",
+    menuPickDate: "Sélectionne une date de vol pour charger le menu.",
+    menuSelection: "Sélection du menu",
+    menuAutoPlaceholder: "Menu indicatif en attendant la base.",
+    menuAutoMissing: "Données menu en attente. Passe en manuel si besoin.",
+    // AUTO MENU (plats)
+    autoMenu_coldCutsPlatter: "Plateau de charcuterie SWISS Saveurs",
+    autoMenu_granolaMilk: "Granola au lait",
+    autoMenu_nightstopNote: "Menu retour de night stop",
+    autoMenu_gruyereEggRoll:
+      "Rouleau d'œufs au gruyère, herbes des montagnes, shiitakés sautés et tomates",
+    autoMenu_appenzellerOmelette:
+      "Omelette à l'Appenzeller, rösti, épinards et tomates cerises",
+    autoMenu_beefTenderloinPorcini:
+      "Filet de bœuf grillé, sauce aux cèpes, gratin de pommes de terre et brocoli",
+    autoMenu_truffleTriangoli:
+      "Triangoli à la truffe, sauce au vin blanc à la truffe, épinards et fromage Sbrinz",
+    autoMenu_chickenMascarponePolenta:
+      "Suprême de poulet, jus de volaille, polenta au mascarpone, chou rouge et choux de Bruxelles",
+    autoMenu_trofieMushroom:
+      "Pâtes trofie, sauce crémeuse aux champignons, salsifis glacés, poireau rôti, courge et graines de courge",
+    autoMenu_crepeRicottaSpinach:
+      "Crêpe salée à la ricotta et aux épinards, légumes grillés, pommes de terre sautées",
+    autoMenu_scrambledEngelberg:
+      "Œufs brouillés au fromage de l'abbaye d'Engelberg et épinards, rösti",
+    autoMenu_beefBourguignonPuree:
+      "Bœuf bourguignon, purée de pommes de terre et légumes racines glacés",
+    autoMenu_cheeseSpaetzleOnionApple:
+      "Spätzlis au fromage gratinés, oignons frits et pommes",
+    autoMenu_eggSouffleMushroom:
+      "Soufflé aux œufs, tomates et fromage, sauce aux champignons et brocoli",
+    autoMenu_asparagusOmelette:
+      "Omelette aux asperges et sauce hollandaise, pommes de terre persillées",
+    autoMenu_sauteedChickenPolenta:
+      "Suprême de poulet poêlé, jus, polenta au mascarpone, choux de Bruxelles, chou rouge braisé",
+    autoMenu_gratinatedCheeseSpaetzle:
+      "Spätzlis au fromage gratinés, pommes et oignons frits",
+    autoMenu_pendingNote:
+      "Les données de menu se chargeront automatiquement dès qu'elles seront fournies.",
+    autoMenu_outOfRotation: "La date choisie est hors des rotations définies.",
     lblViande: "Option 1",
     lblVege: "Option 2",
     hdrInventaire: "Inventaire",
@@ -420,7 +525,7 @@ export const I18N = {
     mdAperoNotes: "Boisson / notes apéritif",
     mdTCNotes: "Notes thé & café",
     // Repas
-    serveAperitif: "Commander boisson",
+    serveAperitif: "Apéritif commandé",
     mdMeal: "Plat",
     mdNormal: "Choix normal",
     optNormalMeat: "Option 1",
@@ -459,7 +564,7 @@ export const I18N = {
     // Thé & café
     tcCH: "Suisse",
     tcForeign: "Étranger",
-    serveTC: "Commander boisson",
+    serveTC: "Thé & Café servi",
     serveMealDrink: "Commander boisson",
     histTcServed: "Thé & Café servi à",
     histMealDrinkServed: "Boisson repas commandée par",
@@ -476,6 +581,15 @@ export const I18N = {
     lgTogether: "🤝 Manger ensemble",
     legendShow: "Afficher la légende",
     legendHide: "Masquer la légende",
+    bulkOccStart: "Marquer plusieurs sièges",
+    bulkOccApply: "Marquer {n} siège(s) occupés",
+    bulkOccClear: "Tout désélectionner",
+    bulkOccHint: "Clique sur les sièges puis valide.",
+    bulkOccSelected: "{n} siège sélectionné",
+    bulkOccSelectedPlural: "{n} sièges sélectionnés",
+    bulkOccCancel: "Quitter la multi-sélection",
+    bulkOccConfirm: "Confirmer le marquage de {n} sièges occupés ?",
+    bulkOccBlocked: "Siège déjà occupé",
     // =========================
     // ALERTES / MESSAGES
     // =========================
@@ -495,15 +609,14 @@ export const I18N = {
     histTitleSet: "Titre défini:",
     histApServed: "Apéritif servi à",
     histApOrdered: "Apéritif commandé à",
+    histMealDrinkOrdered: "Boissons repas commandées à",
+    histTcOrdered: "Thé & café commandés à",
     histApCanceled: "Apéritif annulé pour",
     histMealServed: "Plat servi à",
-    histMealDrinkOrdered: "Boissons repas commandées à",
-    histTcServed: "Thé & café servis à",
-    histTcOrdered: "Thé & café commandés à",
     histCanceled: "Service annulé pour",
     resetDone: "Vol réinitialisé.",
     remindersTitle: "Rappels à venir",
-    remindServe: "🛎️ Rappel: servir",
+    remindServe: "\u{1F514} Rappel: servir",
     histViewLabel: "Affichage",
     histScope_all: "Tous les événements",
     histScope_seat: "Par siège",
@@ -513,11 +626,10 @@ export const I18N = {
     histAscLbl: "Du plus ancien au plus récent",
     histType_mealDrinkServed: "Boisson repas servie",
     histType_apServed: "Apéritif servi",
-    histType_apOrdered: "Apéritif commandé",
     histType_tcServed: "Thé & Café servi",
-    histType_tcOrdered: "Thé & Café commandé",
-    histType_tcOrdered: "Thé & Café commandé",
     histType_mealServed: "Plat servi",
+    histType_apOrdered: "Apéritif commandé",
+    histType_tcOrdered: "Thé & Café commandé",
     histType_apCanceled: "Apéritif annulé",
     histType_serviceCanceled: "Service annulé",
     histType_trayCleared: "Plateau débarrassé",
@@ -644,12 +756,12 @@ export const I18N = {
     // =========================
     flight: "Flug",
     date: "Datum",
+    flightPlaceholder: "z. B. LX2810",
     saveTitle: "Speichern",
     reset: "Zurücksetzen",
     client: "Kundensicht",
     crew: "Crew-Modus",
     lblLang: "Sprache",
-    flightPlaceholder: "z. B. LX2810",
     exportJSON: "JSON exportieren",
     importJSON: "Importieren",
     exportPNG: "PNG",
@@ -678,7 +790,7 @@ export const I18N = {
     flowAperoTakenTitle: "Aufgenommene Bestellungen ⬇️",
     flowTaken: "Aufgenommen",
     flowEmptyTaken: "Noch keine Bestellungen",
-    flowTCTakenTitle: "Tee & Kaffee aufgenommen ⬇️",
+    flowTCTakenTitle: "Aufgenommene Bestellungen ⬇️",
     flowTakeOrder: "Bestellung",
     flowServeTag: "Servieren",
     flowClearTag: "Zum Abräumen",
@@ -696,6 +808,56 @@ export const I18N = {
     lblLayout: "Flugzeug",
     lblRows: "Reihen",
     secMenuTitle: "Menü",
+    menuModeAuto: "Auto",
+    menuModeManual: "Manuell",
+    menuOutbound: "Hinflug",
+    menuInbound: "Rückflug",
+    menuDayService: "Tagesservice",
+    menuBreakfast: "Frühstück",
+    menuBreakfastType: "Frühstückstyp",
+    menuBreakfastStandard: "Standard",
+    menuBreakfastNight: "Aus Nightstop",
+    menuSelectContext: "Wähle Richtung und Service, um das Menü zu laden.",
+    menuPickDate: "Bitte ein Flugdatum wählen, um das Menü zu laden.",
+    menuSelection: "Menüauswahl",
+    menuAutoPlaceholder: "Platzhalter-Menü bis die DB geliefert wird.",
+    menuAutoMissing: "Menüdaten fehlen noch. Du kannst auf manuell wechseln.",
+    // AUTO MENU (Gerichte)
+    autoMenu_coldCutsPlatter: "SWISS Saveurs Aufschnittplatte",
+    autoMenu_granolaMilk: "Granola mit Milch",
+    autoMenu_nightstopNote: "Nightstop-Menü",
+    autoMenu_gruyereEggRoll:
+      "Eierrolle mit Gruyère und Bergkräutern, sautierte Shiitake-Pilze und Tomaten",
+    autoMenu_appenzellerOmelette:
+      "Omelett mit Appenzeller Käse, Rösti, Spinat und Kirschtomaten",
+    autoMenu_beefTenderloinPorcini:
+      "Gebratenes Rindsfilet mit Steinpilzsauce, Kartoffelgratin und Brokkoli",
+    autoMenu_truffleTriangoli:
+      "Trüffel-Triangoli mit Weisswein-Trüffelsauce, Spinat und Sbrinz",
+    autoMenu_chickenMascarponePolenta:
+      "Pouletbrust mit Geflügeljus, Mascarpone-Polenta, Rotkohl und Rosenkohl",
+    autoMenu_trofieMushroom:
+      "Trofie mit Pilz-Rahmsauce, glasierter Schwarzwurzel, gebratener Lauch, Kürbis und Kürbiskerne",
+    autoMenu_crepeRicottaSpinach:
+      "Herzhafte Crêpe mit Ricotta und Spinat, Grillgemüse, Bratkartoffeln",
+    autoMenu_scrambledEngelberg:
+      "Rührei mit Engelberger Klosterkäse und Spinat, Rösti",
+    autoMenu_beefBourguignonPuree:
+      "Boeuf Bourguignon, Kartoffelpüree und glasierte Wurzelgemüse",
+    autoMenu_cheeseSpaetzleOnionApple:
+      "Käsespätzli mit Röstzwiebeln und Apfelscheiben",
+    autoMenu_eggSouffleMushroom:
+      "Eier-Soufflé mit Tomaten und Käse, Pilzsauce und Brokkoli",
+    autoMenu_asparagusOmelette:
+      "Omelett mit Spargel und Sauce Hollandaise, Petersilienkartoffeln",
+    autoMenu_sauteedChickenPolenta:
+      "Sautierte Pouletbrust mit Jus, Mascarpone-Polenta, Rosenkohl, geschmorter Rotkohl",
+    autoMenu_gratinatedCheeseSpaetzle:
+      "Gratinierte Käsespätzli mit Apfel und Röstzwiebeln",
+    autoMenu_pendingNote:
+      "Menüdaten werden automatisch geladen, sobald sie verfügbar sind.",
+    autoMenu_outOfRotation:
+      "Das gewählte Datum liegt ausserhalb der definierten Rotationen.",
     lblViande: "Option 1",
     lblVege: "Option 2",
     hdrInventaire: "Inventar",
@@ -734,7 +896,7 @@ export const I18N = {
     mdAperoNotes: "Getränk / Aperitif-Notizen",
     mdTCNotes: "Tee & Kaffee – Notizen",
     // Mahlzeit
-    serveAperitif: "Getränk bestellen",
+    serveAperitif: "Aperitif bestellt",
     mdMeal: "Hauptgang",
     mdNormal: "Normale Auswahl",
     optNormalMeat: "Option 1",
@@ -773,12 +935,10 @@ export const I18N = {
     // Tee & Kaffee
     tcCH: "Schweiz",
     tcForeign: "Ausland",
-    serveTC: "Getränk bestellen",
+    serveTC: "Tee & Kaffee serviert",
     serveMealDrink: "Getränk bestellen",
-    histTcServed: "Tee & Kaffee serviert bei",
-    histTcOrdered: "Tee & Kaffee bestellt bei",
+    histTcServed: "Tee & Kaffee serviert um",
     histMealDrinkServed: "Getränk bestellt bei",
-    histMealDrinkOrdered: "Getränke (Hauptgang) bestellt bei",
     serveNone: "Kein Getränk",
     serveNoFood: "Kein Essen",
     // =========================
@@ -792,6 +952,15 @@ export const I18N = {
     lgTogether: "🤝 Zusammen essen",
     legendShow: "Legende anzeigen",
     legendHide: "Legende ausblenden",
+    bulkOccStart: "Mehrere Sitze markieren",
+    bulkOccApply: "{n} Sitz/Plätze als besetzt markieren",
+    bulkOccClear: "Auswahl aufheben",
+    bulkOccHint: "Sitze anklicken und anschliessend bestätigen.",
+    bulkOccSelected: "{n} Sitz ausgewählt",
+    bulkOccSelectedPlural: "{n} Sitze ausgewählt",
+    bulkOccCancel: "Mehrfachauswahl beenden",
+    bulkOccConfirm: "Markiere {n} Sitze als besetzt?",
+    bulkOccBlocked: "Platz bereits belegt",
     // =========================
     // ALARME / MELDUNGEN
     // =========================
@@ -814,10 +983,10 @@ export const I18N = {
     histAscLbl: "Älteste zuerst",
     histType_mealDrinkServed: "Getränk zum Essen serviert",
     histType_apServed: "Aperitif serviert",
-    histType_apOrdered: "Aperitif bestellt",
     histType_tcServed: "Tee & Kaffee serviert",
-    histType_tcOrdered: "Tee & Kaffee bestellt",
     histType_mealServed: "Hauptgang serviert",
+    histType_apOrdered: "Aperitif bestellt",
+    histType_tcOrdered: "Tee & Kaffee bestellt",
     histType_apCanceled: "Aperitif storniert",
     histType_serviceCanceled: "Service storniert",
     histType_trayCleared: "Tray abgeräumt",
@@ -838,12 +1007,14 @@ export const I18N = {
     histTitleSet: "Titel gesetzt:",
     histApServed: "Aperitif serviert bei",
     histApOrdered: "Aperitif bestellt bei",
+    histMealDrinkOrdered: "Getränke (Hauptgang) bestellt bei",
+    histTcOrdered: "Tee & Kaffee bestellt bei",
     histApCanceled: "Aperitif storniert für",
     histMealServed: "Hauptgang serviert bei",
     histCanceled: "Service storniert für",
     resetDone: "Flug zurückgesetzt.",
     remindersTitle: "Anstehende Erinnerungen",
-    remindServe: "🛎️ Erinnerung: bedienen",
+    remindServe: "\u{1F514} Erinnerung: bedienen",
     // =========================
     // DIVERS (Duplikate beibehalten)
     // =========================

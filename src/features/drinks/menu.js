@@ -740,9 +740,9 @@ function renderSubOptions(cat, sub) {
             : [];
     if (accordionCtrl) {
         targetsToOpen.forEach((target) => accordionCtrl.open(target));
-  }
-  applyDrinkEmojis(container);
-  currentSubKey = subKey;
+    }
+    applyDrinkEmojis(container);
+    currentSubKey = subKey;
 }
 function resetState(keys) {
     // If a specific list is provided, reset only those keys; an empty list means reset nothing.

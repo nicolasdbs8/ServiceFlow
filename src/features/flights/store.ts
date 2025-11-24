@@ -11,6 +11,11 @@
 
 export type FlightPhase = "fiche" | "aperitif" | "repas" | "tc";
 
+export type MenuMode = "auto" | "manual";
+export type MenuDirection = "outbound" | "inbound" | null;
+export type MenuServiceType = "day" | "breakfast" | null;
+export type MenuBreakfastType = "standard" | "nightstop";
+
 export interface SeatAllocation {
   normalKey: string | null;
   spmlCode: string | null;
@@ -74,6 +79,22 @@ export interface InventoryState {
   pre: Record<string, number>;
 }
 
+export interface MenuState {
+  mode: MenuMode;
+  direction: MenuDirection;
+  serviceType: MenuServiceType;
+  breakfastType: MenuBreakfastType;
+  rotation: number | null;
+  viandeLabel: string;
+  vegeLabel: string;
+  manualViandeLabel: string;
+  manualVegeLabel: string;
+  autoViandeLabel: string;
+  autoVegeLabel: string;
+  autoStatus?: string;
+  autoNote?: string;
+}
+
 export interface ReminderState {
   key: string;
   at: number | null;
@@ -89,10 +110,7 @@ export interface StoreState {
   title: StoreTitle;
   config: StoreConfig;
   inventory: InventoryState;
-  menu: {
-    viandeLabel: string;
-    vegeLabel: string;
-  };
+  menu: MenuState;
   seats: Record<string, SeatState>;
   phase: FlightPhase;
   reminders: ReminderState[];
@@ -134,8 +152,31 @@ export function restoreState(snapshot: StoreState): void {
   store.inventory.spml = { ...(clone.inventory?.spml ?? {}) };
   store.inventory.pre = { ...(clone.inventory?.pre ?? {}) };
 
+  store.menu.mode = clone.menu?.mode ?? "auto";
+  store.menu.direction =
+    clone.menu?.direction === "inbound" || clone.menu?.direction === "outbound"
+      ? clone.menu.direction
+      : null;
+  store.menu.serviceType =
+    clone.menu?.serviceType === "day" || clone.menu?.serviceType === "breakfast"
+      ? clone.menu.serviceType
+      : null;
+  store.menu.breakfastType =
+    clone.menu?.breakfastType === "nightstop" || clone.menu?.breakfastType === "standard"
+      ? clone.menu.breakfastType
+      : "standard";
+  store.menu.rotation =
+    typeof clone.menu?.rotation === "number" ? clone.menu.rotation : null;
   store.menu.viandeLabel = clone.menu?.viandeLabel ?? "";
   store.menu.vegeLabel = clone.menu?.vegeLabel ?? "";
+  store.menu.manualViandeLabel =
+    clone.menu?.manualViandeLabel ?? clone.menu?.viandeLabel ?? "";
+  store.menu.manualVegeLabel =
+    clone.menu?.manualVegeLabel ?? clone.menu?.vegeLabel ?? "";
+  store.menu.autoViandeLabel = clone.menu?.autoViandeLabel ?? "";
+  store.menu.autoVegeLabel = clone.menu?.autoVegeLabel ?? "";
+  store.menu.autoStatus = clone.menu?.autoStatus ?? "";
+  store.menu.autoNote = clone.menu?.autoNote ?? "";
 
   store.phase = clone.phase ?? "fiche";
   store.clientView = Boolean(clone.clientView);

@@ -26,8 +26,31 @@ export function restoreState(snapshot) {
     store.inventory.hot_special = clone.inventory?.hot_special ?? 0;
     store.inventory.spml = { ...(clone.inventory?.spml ?? {}) };
     store.inventory.pre = { ...(clone.inventory?.pre ?? {}) };
+    store.menu.mode = clone.menu?.mode ?? "auto";
+    store.menu.direction =
+        clone.menu?.direction === "inbound" || clone.menu?.direction === "outbound"
+            ? clone.menu.direction
+            : null;
+    store.menu.serviceType =
+        clone.menu?.serviceType === "day" || clone.menu?.serviceType === "breakfast"
+            ? clone.menu.serviceType
+            : null;
+    store.menu.breakfastType =
+        clone.menu?.breakfastType === "nightstop" || clone.menu?.breakfastType === "standard"
+            ? clone.menu.breakfastType
+            : "standard";
+    store.menu.rotation =
+        typeof clone.menu?.rotation === "number" ? clone.menu.rotation : null;
     store.menu.viandeLabel = clone.menu?.viandeLabel ?? "";
     store.menu.vegeLabel = clone.menu?.vegeLabel ?? "";
+    store.menu.manualViandeLabel =
+        clone.menu?.manualViandeLabel ?? clone.menu?.viandeLabel ?? "";
+    store.menu.manualVegeLabel =
+        clone.menu?.manualVegeLabel ?? clone.menu?.vegeLabel ?? "";
+    store.menu.autoViandeLabel = clone.menu?.autoViandeLabel ?? "";
+    store.menu.autoVegeLabel = clone.menu?.autoVegeLabel ?? "";
+    store.menu.autoStatus = clone.menu?.autoStatus ?? "";
+    store.menu.autoNote = clone.menu?.autoNote ?? "";
     store.phase = clone.phase ?? "fiche";
     store.clientView = Boolean(clone.clientView);
     store.reminders = Array.isArray(clone.reminders) ? [...clone.reminders] : [];

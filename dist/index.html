@@ -1,16 +1,14 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<link rel="apple-touch-icon" href="/icons/icon-180.png?v=2">
-<link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.png?v=2">
-<link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=2">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png?v=2">
+<link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png?v=2">
+<link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.png?v=2">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="apple-mobile-web-app-orientations" content="landscape">
-<link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icons/icon-180.png">
-<meta name="theme-color" content="#383838">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#383838">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ServiceFlow">
@@ -18,8 +16,8 @@
 <title>SWISS ServiceFlow v.1.0</title>
 
 
-  <script type="module" crossorigin src="/assets/index-Cyuuz05P.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-DsMp5tOu.css">
+  <script type="module" crossorigin src="/assets/index-Cb3jXZxq.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-nb5U62fJ.css">
 </head>
 <body class="theme-dark">
 <header>
@@ -81,10 +79,60 @@
     </div>
     <div class="section">
 <div class="title" id="secMenuTitle">Meal labels</div>
-<label class="pill" id="lblViande" style="display:inline-block;margin-bottom:8px">Option 1</label>
-<input id="labelViande" type="text" placeholder="ex: Beef with red wine sauce">
-<label class="pill" id="lblVege" style="margin-top:6px;display:inline-block;margin-bottom:8px">Option 2</label>
-<input id="labelVege" type="text" placeholder="ex: Vegetarian lasagna">
+<div class="menu-mode-toggle" role="group" aria-label="Menu mode">
+  <button class="btn menu-mode-btn" data-menu-mode="auto" id="menuModeAuto">Auto</button>
+  <button class="btn menu-mode-btn ghost" data-menu-mode="manual" id="menuModeManual">Manual</button>
+</div>
+
+<div class="menu-panel" id="menuAutoPanel">
+  <div class="accordion" id="menuSelectionAccordion">
+    <div class="accordion__section" data-open="true">
+      <div class="accordion__header" id="menuSelectionHeader">Menu selection</div>
+      <div class="accordion__body" id="menuSelectionBody">
+        <div class="menu-context">
+          <div class="menu-context__row menu-context__row--center">
+            <div class="segmented-control menu-segmented" id="menuDirectionBtns">
+              <button class="btn menu-direction-btn" data-menu-direction="outbound" id="menuDirOutbound">Outbound</button>
+              <button class="btn menu-direction-btn" data-menu-direction="inbound" id="menuDirInbound">Inbound</button>
+            </div>
+          </div>
+          <div class="menu-context__row menu-context__row--center" id="menuServiceRow" style="display:none">
+            <div class="segmented-control menu-segmented" id="menuServiceBtns">
+              <button class="btn" data-menu-service="day" id="menuServiceDay">Day service</button>
+              <button class="btn" data-menu-service="breakfast" id="menuServiceBreakfast">Breakfast</button>
+            </div>
+          </div>
+          <div class="menu-context__row" id="menuBreakfastRow" style="display:none">
+            <div class="menu-nightstop">
+              <input type="checkbox" id="menuBreakfastNight" />
+              <label for="menuBreakfastNight" id="lblMenuBreakfastType">Out of night stop</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="menu-preview" id="menuPreview">
+    <div class="menu-preview__row menu-preview__row--column">
+      <div class="menu-preview__title" id="lblAutoOpt1">Option 1</div>
+      <div class="menu-preview__value" id="menuAutoOption1">--</div>
+    </div>
+    <div class="menu-preview__row menu-preview__row--column">
+      <div class="menu-preview__title" id="lblAutoOpt2">Option 2</div>
+      <div class="menu-preview__value" id="menuAutoOption2">--</div>
+    </div>
+    <div class="menu-preview__note" id="menuAutoStatus"></div>
+  </div>
+</div>
+
+<div class="menu-panel menu-panel--ghost" id="menuManualPanel" hidden>
+  <div class="menu-manual-hint" id="menuManualHint"></div>
+  <label class="pill" id="lblViande" style="display:inline-block;margin-bottom:8px">Option 1</label>
+  <input id="labelViande" type="text" placeholder="ex: Beef with red wine sauce">
+  <label class="pill" id="lblVege" style="margin-top:6px;display:inline-block;margin-bottom:8px">Option 2</label>
+  <input id="labelVege" type="text" placeholder="ex: Vegetarian lasagna">
+</div>
     </div>
 <h3 id="hdrInventaire">Inventory</h3>
     <div class="inventory" id="inv">
@@ -142,14 +190,22 @@
   <button class="btn" id="spmlAddBtn" data-i18n-btn="add">Add</button>
 </div>
 
-      <div class="row" style="grid-column:1 / -1; margin-top:6px">
-<label class="pill" id="lblPreAdd">Pre-order</label>
-        <input id="preAddLabel" type="text" placeholder="ex: Glutenfree pasta" style="width:180px">
-        <input id="preAddQty" type="number" min="1" value="1" style="width:90px">
-<button class="btn" id="preAddBtn" data-i18n-btn="add">Add</button>
+        <div class="row" style="grid-column:1 / -1; margin-top:6px">
+          <label class="pill" id="lblPreAdd">Pre-order</label>
+        </div>
+        <div class="row" style="grid-column:1 / -1; margin-top:4px">
+          <select id="preAddCode" style="width:140px"></select>
+          <input
+            id="preAddLabel"
+            type="text"
+            placeholder="ex: Glutenfree pasta"
+            style="width:180px"
+          >
+          <input id="preAddQty" type="number" min="1" value="1" style="width:90px">
+          <button class="btn" id="preAddBtn" data-i18n-btn="add">Add</button>
+        </div>
       </div>
-    </div>
-  </aside>
+    </aside>
 
 <main>
   <div class="seatmap"> <!-- AJOUT -->
@@ -256,6 +312,41 @@
 </div>
     <div id="seatgrid" class="seatgrid"></div>
     <div class="legend-actions">
+      <div class="bulk-occupy-panel" id="bulkOccupyControls">
+        <div class="bulk-occupy__row">
+          <button
+            type="button"
+            class="btn ghost"
+            id="bulkOccupyToggle"
+            aria-pressed="false"
+          >
+            Mark multiple seats
+          </button>
+          <button
+            type="button"
+            class="btn primary"
+            id="bulkOccupyApply"
+            disabled
+          >
+            Apply
+          </button>
+        </div>
+        <div class="bulk-occupy__row">
+          <button
+            type="button"
+            class="btn ghost"
+            id="bulkOccupyClear"
+            disabled
+          >
+            Clear selection
+          </button>
+        </div>
+        <div
+          class="bulk-occupy__status"
+          id="bulkOccupyStatus"
+          aria-live="polite"
+        ></div>
+      </div>
       <button
         type="button"
         class="btn ghost legend-btn"
@@ -548,11 +639,24 @@
               <div class="title" id="mdMeal">Meal</div>
             </div>
             <div class="modal-card__content">
-              <div class="form-row form-row--stack">
-                <label class="field-label" id="mdNormal">Normal choice</label>
-                <div
-                  id="m_normalMeal"
-                  class="meal-card-grid"
+                  <div class="form-row form-row--stack">
+                    <div class="label-with-info">
+                      <label class="field-label" id="mdNormal">Normal choice</label>
+                      <button class="info-btn" id="normalInfoBtn" type="button" aria-label="Normal options info">i</button>
+                      <div class="info-popup" id="normalInfoPopup" role="dialog" aria-live="polite" hidden>
+                    <div class="info-popup__item">
+                      <div class="info-popup__label" id="normalInfoOpt1Label">Option 1</div>
+                      <div class="info-popup__value" id="normalInfoOpt1">--</div>
+                    </div>
+                    <div class="info-popup__item">
+                      <div class="info-popup__label" id="normalInfoOpt2Label">Option 2</div>
+                      <div class="info-popup__value" id="normalInfoOpt2">--</div>
+                    </div>
+                      </div>
+                    </div>
+                    <div
+                      id="m_normalMeal"
+                      class="meal-card-grid"
                   role="group"
                   aria-labelledby="mdNormal"
                 ></div>

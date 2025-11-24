@@ -2,6 +2,7 @@
   "name": "SwissServiceFlow",
   "short_name": "ServiceFlow",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#383838",
   "theme_color": "#383838",
