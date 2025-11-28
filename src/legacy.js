@@ -2,6 +2,7 @@
 import { applyDrinkEmojis, configureDrinkMenu, drinkSel, initDrinkGrid, initializeDrinkMenu, reactivateDrinkGrid, resetDrinkUI, showAllDrinkGroups, updateServeDrinkButtons, } from "./features/drinks/menu";
 import { I18N } from "./features/i18n/locales";
 import { computeMenuRotationFromDate, lookupAutoMenuLabels, } from "./features/menu/autoMenu";
+import { clearPersistedState } from "./features/flights/services/persistence";
 // Fonction pour rendre un lment cliquable sur PC et tactile
 function addClickAndTouchListener(element, handler) {
     element.addEventListener("click", handler);
@@ -6560,6 +6561,7 @@ function initLangButtons() {
                 return;
             store.config.lang = code;
             save();
+            refreshAutoMenu();
             applyI18n();
             renderHistory();
             renderSeatmap();
@@ -6925,6 +6927,7 @@ function performFullReset() {
     // 5) Remet le chip de phase
     setActivePhaseTab("fiche");
     // 6) Re-render
+    clearPersistedState(storageKey()).catch((error) => console.warn("[reset] clear persisted state failed:", error));
     save();
     renderSeatmap();
     refreshBadges();

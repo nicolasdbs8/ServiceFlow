@@ -101,6 +101,58 @@ export async function setupPersistence(): Promise<void> {
   };
 }
 
+/**
+ * Fetches the most recent persisted snapshot (IndexedDB first, then legacy localStorage).
+ * Returns the key + payload, or null if nothing was found.
+ */
+export async function loadPersistedSnapshot<T = unknown>(): Promise<{ key: string; snapshot: T } | null> {
+  const key = (await getLastFlightKey()) ?? readLegacyLastKey();
+  if (!key) return null;
+
+  const snapshot = (await loadFlight<T>(key)) ?? readLegacySnapshot<T>(key);
+  if (!snapshot) return null;
+
+  return { key, snapshot };
+}
+
+/**
+ * Clears the persisted snapshot for the given flight key (IndexedDB + legacy localStorage).
+ */
+export async function clearPersistedState(key: string): Promise<void> {
+  try {
+    localStorage.removeItem(key);
+    localStorage.removeItem(LAST_KEY);
+  } catch (error) {
+    console.warn("[persistence] localStorage clear failed:", error);
+  }
+
+  try {
+    await deleteFlight(key);
+    await setLastFlightKey("");
+  } catch (error) {
+    console.warn("[persistence] clearPersistedState fallback:", error);
+  }
+}
+
+function readLegacyLastKey(): string | null {
+  try {
+    return typeof localStorage !== "undefined" ? localStorage.getItem(LAST_KEY) : null;
+  } catch {
+    return null;
+  }
+}
+
+function readLegacySnapshot<T>(key: string): T | null {
+  try {
+    if (typeof localStorage === "undefined") return null;
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch (error) {
+    console.warn("[persistence] legacy snapshot parse failed:", error);
+    return null;
+  }
+}
+
 function isFlightKey(key: string): boolean {
   return key.startsWith(FLIGHT_PREFIX) && key !== LAST_KEY;
 }

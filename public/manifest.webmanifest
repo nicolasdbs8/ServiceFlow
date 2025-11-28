@@ -1,9 +1,11 @@
 {
-  "name": "SwissServiceFlow",
+  "id": "/",
+  "name": "SWISS ServiceFlow",
   "short_name": "ServiceFlow",
-  "start_url": "/",
+  "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",
+  "orientation": "landscape",
   "background_color": "#383838",
   "theme_color": "#383838",
   "icons": [

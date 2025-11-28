@@ -16,6 +16,7 @@ import {
   computeMenuRotationFromDate,
   lookupAutoMenuLabels,
 } from "./features/menu/autoMenu";
+import { clearPersistedState } from "./features/flights/services/persistence";
 
 // Fonction pour rendre un lment cliquable sur PC et tactile
 function addClickAndTouchListener(element, handler) {
@@ -7005,6 +7006,7 @@ function initLangButtons() {
 
       store.config.lang = code;
       save();
+      refreshAutoMenu();
       applyI18n();
       renderHistory();
       renderSeatmap();
@@ -7418,6 +7420,9 @@ function performFullReset() {
   setActivePhaseTab("fiche");
 
   // 6) Re-render
+  clearPersistedState(storageKey()).catch((error) =>
+    console.warn("[reset] clear persisted state failed:", error),
+  );
   save();
   renderSeatmap();
   refreshBadges();
